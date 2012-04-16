@@ -113,35 +113,40 @@ func (f *Foundation) AddBlock(b *Block) {
 	b.Parent = f
 }
 
-func (f *Foundation) handleDrawing() {
-	for {
-		select {
-		case dr := <-f.Draw:
-			if f.Paint != nil {
-				f.Paint(dr.GC)
-			}
-			for _, child := range f.Children {
-				dr.GC.Save()
+// func (f *Foundation) handleDrawing() {
+// 	for {
+// 		select {
+// 		case dr := <-f.Draw:
+// 			if f.Paint != nil {
+// 				f.Paint(dr.GC)
+// 			}
+// 			for _, child := range f.Children {
+// 				dr.GC.Save()
 
-				// TODO: clip to child.BoundsInParent()?
-				dr.GC.Translate(child.Min.X, child.Min.Y)
-				cdr := DrawRequest{
-					GC: dr.GC,
-					Done: make(chan bool),
-				}
-				child.Draw <- dr
-				<- cdr.Done
+// 				translatedDirty := dr.Dirty
+// 				translatedDirty.Min.X -= child.Min.X
+// 				translatedDirty.Min.Y -= child.Min.Y
 
-				dr.GC.Restore()
-			}
-			dr.Done<- true
-		case dirtyBounds := <-f.Redraw:
-			dirtyBounds.Min.X -= f.Min.X
-			dirtyBounds.Min.Y -= f.Min.Y
-			f.Parent.Redraw <- dirtyBounds
-		}
-	}
-}
+// 				// TODO: clip to child.BoundsInParent()?
+// 				dr.GC.Translate(child.Min.X, child.Min.Y)
+// 				cdr := DrawRequest{
+// 					GC: dr.GC,
+// 					Dirty: translatedDirty,
+// 					Done: make(chan bool),
+// 				}
+// 				child.Draw <- dr
+// 				<- cdr.Done
+
+// 				dr.GC.Restore()
+// 			}
+// 			dr.Done<- true
+// 		case dirtyBounds := <-f.Redraw:
+// 			dirtyBounds.Min.X -= f.Min.X
+// 			dirtyBounds.Min.Y -= f.Min.Y
+// 			f.Parent.Redraw <- dirtyBounds
+// 		}
+// 	}
+// }
 
 func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 	// quad-tree one day?
@@ -152,6 +157,14 @@ func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 		}
 	}
 	return
+}
+
+func (f *Foundation) handleRedraw() {
+	for dirtyBounds := range f.Redraw {
+		dirtyBounds.Min.X -= f.Min.X
+		dirtyBounds.Min.Y -= f.Min.Y
+		f.Parent.Redraw <- dirtyBounds
+	}
 }
 
 // dispense events to children, as appropriate
@@ -181,6 +194,31 @@ func (f *Foundation) handleEvents() {
 			e.Loc.X -= b.Min.X
 			e.Loc.Y -= b.Min.Y
 			b.allEventsIn <- e
+
+		case dr := <-f.Draw:
+			if f.Paint != nil {
+				f.Paint(dr.GC)
+			}
+			for _, child := range f.Children {
+				dr.GC.Save()
+
+				translatedDirty := dr.Dirty
+				translatedDirty.Min.X -= child.Min.X
+				translatedDirty.Min.Y -= child.Min.Y
+
+				// TODO: clip to child.BoundsInParent()?
+				dr.GC.Translate(child.Min.X, child.Min.Y)
+				cdr := DrawRequest{
+					GC: dr.GC,
+					Dirty: translatedDirty,
+					Done: make(chan bool),
+				}
+				child.Draw <- cdr
+				<- cdr.Done
+
+				dr.GC.Restore()
+			}
+			dr.Done<- true
 		}
 	}
 }
@@ -239,6 +277,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 					Loc: Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
+
 		}
 	}
 }
@@ -255,20 +294,14 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 			// TODO: pass dirtyBounds too, to avoid redrawing out of reach components
 			_ = dirtyBounds
 			wf.doPaint(gc)
-			for _, child := range wf.Children {
-				gc.Save()
 
-				// TODO: clip to child.BoundsInParent()?
-				//gc.Translate(child.Min.X, child.Min.Y)
-				gc.Translate(child.Min.X, child.Min.Y)
-				cdr := DrawRequest{
-					GC: gc,
-					Done: make(chan bool),
-				}
-				child.Draw <- cdr
-				<-cdr.Done
-				gc.Restore()
+			dr := DrawRequest{
+				GC: gc,
+				Dirty: dirtyBounds,
+				Done: make(chan bool),
 			}
+			wf.Draw <-dr
+			<-dr.Done
 
 			wf.W.FlushImage()
 		}
