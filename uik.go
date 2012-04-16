@@ -172,6 +172,10 @@ func (f *Foundation) handleEvents() {
 	f.ListenedChannels[f.CloseEvents] = true
 	f.ListenedChannels[f.MouseDownEvents] = true
 	f.ListenedChannels[f.MouseUpEvents] = true
+
+	var dragOriginBlocks = map[wde.Button]*Block{}
+	// drag and up events for the same button get sent to the origin as well
+
 	for {
 		select {
 		case e := <-f.CloseEvents:
@@ -183,17 +187,24 @@ func (f *Foundation) handleEvents() {
 			if b == nil {
 				break
 			}
+			dragOriginBlocks[e.Which] = b
 			e.Loc.X -= b.Min.X
 			e.Loc.Y -= b.Min.Y
 			b.allEventsIn <- e
 		case e := <-f.MouseUpEvents:
 			b := f.BlockForCoord(e.Loc)
-			if b == nil {
-				break
+			if b != nil {
+				be := e
+				be.Loc.X -= b.Min.X
+				be.Loc.Y -= b.Min.Y
+				b.allEventsIn <- be
 			}
-			e.Loc.X -= b.Min.X
-			e.Loc.Y -= b.Min.Y
-			b.allEventsIn <- e
+			if origin, ok := dragOriginBlocks[e.Which]; ok {
+				oe := e
+				oe.Loc.X -= origin.Min.X
+				oe.Loc.Y -= origin.Min.Y
+				origin.allEventsIn <- oe
+			}
 
 		case dr := <-f.Draw:
 			if f.Paint != nil {
