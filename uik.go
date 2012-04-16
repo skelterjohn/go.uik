@@ -62,9 +62,10 @@ func (b *Block) MakeChannels() {
 	b.CloseEvents = make(chan wde.CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
-	b.allEventsIn, b.allEventsOut = QueuePipe()
 	b.Draw = make(chan draw2d.GraphicContext)
 	b.Redraw = make(chan Bounds)
+	b.allEventsIn, b.allEventsOut = QueuePipe()
+	go b.handleSplitEvents()
 }
 
 // The foundation type is for channeling events to children, and passing along
@@ -125,7 +126,7 @@ func (f *Foundation) handleEvents() {
 		select {
 		case e := <-f.CloseEvents:
 			for _, b := range f.Children {
-				b.CloseEvents <- e
+				b.allEventsIn <- e
 			}
 		case e := <-f.MouseDownEvents:
 			b := f.BlockForCoord(e.Loc)
@@ -134,7 +135,7 @@ func (f *Foundation) handleEvents() {
 			}
 			e.X -= int(b.Min.X)
 			e.Y -= int(b.Min.Y)
-			b.MouseDownEvents <- e
+			b.allEventsIn <- e
 		case e := <-f.MouseUpEvents:
 			b := f.BlockForCoord(e.Loc)
 			if b == nil {
@@ -142,7 +143,7 @@ func (f *Foundation) handleEvents() {
 			}
 			e.X -= int(b.Min.X)
 			e.Y -= int(b.Min.Y)
-			b.MouseUpEvents <- e
+			b.allEventsIn <- e
 		}
 	}
 }
