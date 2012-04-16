@@ -22,6 +22,10 @@ type Block struct {
 	CloseEvents     chan wde.CloseEvent
 	MouseDownEvents chan MouseDownEvent
 	MouseUpEvents   chan MouseUpEvent
+
+	allEventsIn     chan<- interface{}
+	allEventsOut    <-chan interface{}
+
 	Draw            chan draw2d.GraphicContext
 	Redraw          chan Bounds
 
@@ -31,6 +35,19 @@ type Block struct {
 	Min Coord
 	// size of block
 	Size Coord
+}
+
+func (b *Block) handleSplitEvents() {
+	for e := range b.allEventsOut {
+		switch e := e.(type) {
+		case MouseDownEvent:
+			b.MouseDownEvents <- e
+		case MouseUpEvent:
+			b.MouseUpEvents <- e
+		case wde.CloseEvent:
+			b.CloseEvents <- e
+		}
+	}
 }
 
 func (b *Block) BoundsInParent() (bounds Bounds) {
@@ -45,6 +62,7 @@ func (b *Block) MakeChannels() {
 	b.CloseEvents = make(chan wde.CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
+	b.allEventsIn, b.allEventsOut = QueuePipe()
 	b.Draw = make(chan draw2d.GraphicContext)
 	b.Redraw = make(chan Bounds)
 }
