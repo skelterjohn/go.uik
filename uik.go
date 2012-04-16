@@ -113,41 +113,6 @@ func (f *Foundation) AddBlock(b *Block) {
 	b.Parent = f
 }
 
-// func (f *Foundation) handleDrawing() {
-// 	for {
-// 		select {
-// 		case dr := <-f.Draw:
-// 			if f.Paint != nil {
-// 				f.Paint(dr.GC)
-// 			}
-// 			for _, child := range f.Children {
-// 				dr.GC.Save()
-
-// 				translatedDirty := dr.Dirty
-// 				translatedDirty.Min.X -= child.Min.X
-// 				translatedDirty.Min.Y -= child.Min.Y
-
-// 				// TODO: clip to child.BoundsInParent()?
-// 				dr.GC.Translate(child.Min.X, child.Min.Y)
-// 				cdr := DrawRequest{
-// 					GC: dr.GC,
-// 					Dirty: translatedDirty,
-// 					Done: make(chan bool),
-// 				}
-// 				child.Draw <- dr
-// 				<- cdr.Done
-
-// 				dr.GC.Restore()
-// 			}
-// 			dr.Done<- true
-// 		case dirtyBounds := <-f.Redraw:
-// 			dirtyBounds.Min.X -= f.Min.X
-// 			dirtyBounds.Min.Y -= f.Min.Y
-// 			f.Parent.Redraw <- dirtyBounds
-// 		}
-// 	}
-// }
-
 func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 	// quad-tree one day?
 	for _, bl := range f.Children {

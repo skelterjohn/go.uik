@@ -4,12 +4,11 @@ import (
 	"github.com/skelterjohn/go.wde"
 	"code.google.com/p/draw2d/draw2d"
 	"image/color"
-	"fmt"
 )
 
 type Button struct {
 	Block
-	Label string
+	Label *Label
 	pressed bool
 
 	Click chan<- wde.Button
@@ -19,7 +18,7 @@ type Button struct {
 func NewButton(label string) (b *Button) {
 	b = new(Button)
 	b.MakeChannels()
-	b.Label = label
+	b.Label = NewLabel(label)
 
 	b.Min = Coord{0, 0}
 	b.Size = Coord{100, 50}
@@ -37,6 +36,18 @@ func NewButton(label string) (b *Button) {
 	return
 }
 
+func safeRect(path draw2d.GraphicContext, min, max Coord) {
+	x1, y1 := min.X, min.Y
+	x2, y2 := max.X, max.Y
+	x, y := path.LastPoint()
+    path.MoveTo(x1, y1)
+    path.LineTo(x2, y1)
+    path.LineTo(x2, y2)
+    path.LineTo(x1, y2)
+    path.Close()
+    path.MoveTo(x, y)
+}
+
 func (b *Button) draw(gc draw2d.GraphicContext) {
 	gc.SetStrokeColor(color.Black)
 	if b.pressed {
@@ -44,19 +55,15 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	} else {
 		gc.SetFillColor(color.White)
 	}
-	draw2d.Rect(gc, 0, 0, b.Size.X, b.Size.Y)
+	safeRect(gc, Coord{0, 0}, b.Size)
 	gc.FillStroke()
-	gc.SetFontSize(12)
-	gc.FillString(b.Label)
-	gc.FillStroke()
-	gc.Stroke()
 }
 
 func (b *Button) handleState() {
 	for {
 		select {
-		case which := <-b.click:
-			fmt.Println("clicked", which)
+		case <-b.click:
+			b.Label.TextCh <- "clicked!"
 		}
 	}
 }
@@ -75,6 +82,7 @@ func (b *Button) handleEvents() {
 			b.Parent.Redraw <- b.BoundsInParent()
 		case dr := <-b.Draw:
 			b.doPaint(dr.GC)
+			b.Label.doPaint(dr.GC)
 			dr.Done<- true
 		}
 	}
