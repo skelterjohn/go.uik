@@ -40,6 +40,8 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 }
 
 func (b *Button) handleEvents() {
+	b.ListenedChannels[b.MouseDownEvents] = true
+	b.ListenedChannels[b.MouseUpEvents] = true
 	for {
 		select {
 		case <-b.MouseDownEvents:

@@ -25,6 +25,8 @@ type DrawRequest struct {
 type Block struct {
 	Parent *Foundation
 
+	ListenedChannels map[interface{}]bool
+
 	CloseEvents     chan wde.CloseEvent
 	MouseDownEvents chan MouseDownEvent
 	MouseUpEvents   chan MouseUpEvent
@@ -60,11 +62,17 @@ func (b *Block) handleSplitEvents() {
 	for e := range b.allEventsOut {
 		switch e := e.(type) {
 		case MouseDownEvent:
-			b.MouseDownEvents <- e
+			if b.ListenedChannels[b.MouseDownEvents] {
+				b.MouseDownEvents <- e
+			}
 		case MouseUpEvent:
-			b.MouseUpEvents <- e
+			if b.ListenedChannels[b.MouseUpEvents] {
+				b.MouseUpEvents <- e
+			}
 		case wde.CloseEvent:
-			b.CloseEvents <- e
+			if b.ListenedChannels[b.CloseEvents] {
+				b.CloseEvents <- e
+			}
 		}
 	}
 }
@@ -78,6 +86,7 @@ func (b *Block) BoundsInParent() (bounds Bounds) {
 }
 
 func (b *Block) MakeChannels() {
+	b.ListenedChannels = make(map[interface{}]bool)
 	b.CloseEvents = make(chan wde.CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
@@ -147,6 +156,9 @@ func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 
 // dispense events to children, as appropriate
 func (f *Foundation) handleEvents() {
+	f.ListenedChannels[f.CloseEvents] = true
+	f.ListenedChannels[f.MouseDownEvents] = true
+	f.ListenedChannels[f.MouseUpEvents] = true
 	for {
 		select {
 		case e := <-f.CloseEvents:
