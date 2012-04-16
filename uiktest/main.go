@@ -6,12 +6,12 @@ import (
 )
 
 func main() {
-	f, err := uik.NewFoundation(uik.Size{200, 200})
+	w, err := uik.NewWindow(nil, 200, 200)
 	if err != nil {
-		return
+		panic(err)
 	}
-	f.Main = uik.NewButton("hi")
-	f.Window.Show()
-	f.Draw()
-	select{}
+	b := uik.NewButton("Hi")
+	w.AddBlock(&b.Block)
+	w.Show()
+	select {}
 }

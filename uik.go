@@ -1,136 +1,214 @@
 package uik
 
 import (
+	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/go.wde"
 	"github.com/skelterjohn/go.wde/xgb"
-	"code.google.com/p/draw2d/draw2d"
-	"image/color"
-	"fmt"
 )
 
-var WindowGenerator func (parent wde.Window, width, height int) (window wde.Window, err error)
+var WindowGenerator func(parent wde.Window, width, height int) (window wde.Window, err error)
 
 func init() {
-	WindowGenerator = func(parent wde.Window, width, height int) (window wde.Window, err error)  {
+	WindowGenerator = func(parent wde.Window, width, height int) (window wde.Window, err error) {
 		window, err = xgb.NewWindow(width, height)
 		return
 	}
 }
 
-type EventFilter func(event interface{}) bool
+// The Block type is a basic unit that can receive events and draw itself.
+type Block struct {
+	Parent *Foundation
 
-type Size struct {
-	W, H float64
+	CloseEvents     chan wde.CloseEvent
+	MouseDownEvents chan MouseDownEvent
+	MouseUpEvents   chan MouseUpEvent
+	Draw            chan draw2d.GraphicContext
+	Redraw          chan Bounds
+
+	Paint func(gc draw2d.GraphicContext)
+
+	// minimum point relative to the block's parent: only the parent should set this
+	Min Coord
+	// size of block
+	Size Coord
 }
 
-type Point struct {
-	X, Y float64
+func (b *Block) BoundsInParent() (bounds Bounds) {
+	bounds.Min = b.Min
+	bounds.Max = b.Min
+	bounds.Max.X += b.Size.X
+	bounds.Max.Y += b.Size.Y
+	return
 }
 
-type Block interface {
-	// constrain this block to a certain size
-	SetSize(sz Size) (err error)
-	GetSize() (sz Size)
-
-	// draw this block in a context constrained by size and min at the origin
-	Draw(gc draw2d.GraphicContext) (err error)
-
-	// all events that occur in this block will be filtered and sent on ch
-	Subscribe(ch chan<- interface{}, filter EventFilter)
+func (b *Block) MakeChannels() {
+	b.CloseEvents = make(chan wde.CloseEvent)
+	b.MouseDownEvents = make(chan MouseDownEvent)
+	b.MouseUpEvents = make(chan MouseUpEvent)
+	b.Draw = make(chan draw2d.GraphicContext)
+	b.Redraw = make(chan Bounds)
 }
 
+// The foundation type is for channeling events to children, and passing along
+// draw calls.
 type Foundation struct {
-	Window wde.Window
-	GC draw2d.GraphicContext
-	Main Block
-	events <-chan interface{}
+	Block
+	Children    []*Block
+
+	// this block currently has keyboard priority
+	KeyboardBlock    *Block
 }
 
-func NewFoundation(sz Size) (f *Foundation, err error) {
-	f = &Foundation{}
-	f.Window, err = WindowGenerator(nil, int(sz.W), int(sz.H))
-	if err != nil {
-		return
+func (f *Foundation) AddBlock(b *Block) {
+	// TODO: place the block somewhere clever
+	// TODO: resize the block in a clever way
+	f.Children = append(f.Children, b)
+	b.Parent = f
+}
+
+func (f *Foundation) handleDrawing() {
+	for {
+		select {
+		case gc := <-f.Draw:
+			if f.Paint != nil {
+				f.Paint(gc)
+			}
+			for _, child := range f.Children {
+				gc.Save()
+
+				// TODO: clip to child.BoundsInParent()?
+
+				gc.Translate(child.Min.X, child.Min.Y)
+				child.Draw <- gc
+
+				gc.Restore()
+			}
+		case dirtyBounds := <-f.Redraw:
+			dirtyBounds.Min.X -= f.Min.X
+			dirtyBounds.Min.Y -= f.Min.Y
+			f.Parent.Redraw <- dirtyBounds
+		}
 	}
-	f.GC = draw2d.NewGraphicContext(f.Window.Screen())
-	f.events = f.Window.EventChan()
-	go f.handleEvents()
+}
+
+func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
+	// quad-tree one day?
+	for _, bl := range f.Children {
+		if bl.BoundsInParent().Contains(p) {
+			b = bl
+			return
+		}
+	}
 	return
 }
 
 func (f *Foundation) handleEvents() {
-	for e := range f.events {
-		if _, ok := e.(wde.CloseEvent); ok {
-			f.Window.Close()
+	for {
+		select {
+		case e := <-f.CloseEvents:
+			for _, b := range f.Children {
+				b.CloseEvents <- e
+			}
+		case e := <-f.MouseDownEvents:
+			b := f.BlockForCoord(e.Loc)
+			if b == nil {
+				break
+			}
+			e.X -= int(b.Min.X)
+			e.Y -= int(b.Min.Y)
+			b.MouseDownEvents <- e
+		case e := <-f.MouseUpEvents:
+			b := f.BlockForCoord(e.Loc)
+			if b == nil {
+				break
+			}
+			e.X -= int(b.Min.X)
+			e.Y -= int(b.Min.Y)
+			b.MouseUpEvents <- e
 		}
-		fmt.Println(e)
 	}
 }
 
-func (f *Foundation) SetSize(sz Size) (err error) {
-	f.Window.SetSize(int(sz.W), int(sz.H))
-	if f.Main != nil {
-		f.Main.SetSize(sz)
+// A foundation that wraps a wde.Window
+type WindowFoundation struct {
+	Foundation
+	W wde.Window
+}
+
+func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err error) {
+	wf = new(WindowFoundation)
+
+	wf.W, err = WindowGenerator(parent, width, height)
+	if err != nil {
+		return
 	}
+	wf.MakeChannels()
+
+	wf.Size = Coord{float64(width), float64(height)}
+
+	go wf.handleWindowEvents()
+	go wf.handleWindowDrawing()
+	go wf.handleEvents()
+
 	return
 }
 
-func (f *Foundation) Draw() (err error) {
-	f.GC.Clear()
-	err = f.Main.Draw(f.GC)
-	f.Window.FlushImage()
-	return
+func (wf *WindowFoundation) Show() {
+	wf.W.Show()
+	wf.Redraw <- wf.BoundsInParent()
 }
 
-func (f *Foundation) GetSize() (sz Size) {
-	w, h := f.Window.Size()
-	sz.W = float64(w)
-	sz.H = float64(h)
-	return
-}
-
-type Terminal struct {
-	Size Size
-}
-var _ Block = &Terminal{}
-
-func (t *Terminal) SetSize(sz Size) (err error) {
-	t.Size = sz
-	return
-}
-
-func (t *Terminal) GetSize() (sz Size) {
-	sz = t.Size
-	return
-}
-
-func (t *Terminal) Draw(gc draw2d.GraphicContext) (err error) {
-	return
-}
-
-func (t *Terminal) Subscribe(ch chan<- interface{}, filter EventFilter) {
-
-}
-
-type Button struct {
-	Terminal
-	Label string
-}
-
-func NewButton(label string) (button *Button) {
-	button = &Button{
-		Label:label,
+// wraps mouse events with float64 coordinates
+func (wf *WindowFoundation) handleWindowEvents() {
+	for e := range wf.W.EventChan() {
+		switch e := e.(type) {
+		case wde.CloseEvent:
+			wf.CloseEvents <- e
+			wf.W.Close()
+		case wde.MouseDownEvent:
+			wf.MouseDownEvents <- MouseDownEvent{
+				MouseDownEvent: e,
+				MouseLocator: MouseLocator {
+					Loc: Coord{float64(e.X), float64(e.Y)},
+				},
+			}
+		case wde.MouseUpEvent:
+			wf.MouseUpEvents <- MouseUpEvent{
+				MouseUpEvent: e,
+				MouseLocator: MouseLocator {
+					Loc: Coord{float64(e.X), float64(e.Y)},
+				},
+			}
+		}
 	}
-	button.Size = Size{100, 30}
-	return
 }
 
-func (b *Button) Draw(gc draw2d.GraphicContext) (err error) {
-	gc.BeginPath()
-	gc.SetFillColor(color.White)
-	gc.SetStrokeColor(color.Black)
-	draw2d.Rect(gc, 0, 0, b.Size.W, b.Size.H)
-	gc.Stroke()
-	gc.Close()
-	return
+func (wf *WindowFoundation) handleWindowDrawing() {
+
+
+	for {
+		select {
+		case dirtyBounds := <-wf.Redraw:
+			gc := draw2d.NewGraphicContext(wf.W.Screen())
+			gc.Clear()
+			gc.BeginPath()
+			// TODO: pass dirtyBounds too, to avoid redrawing out of reach components
+			_ = dirtyBounds
+			if wf.Paint != nil {
+				wf.Paint(gc)
+			}
+			for _, child := range wf.Children {
+				gc.Save()
+
+				// TODO: clip to child.BoundsInParent()?
+
+				gc.Translate(child.Min.X, child.Min.Y)
+				child.Draw <- gc
+
+				gc.Restore()
+			}
+
+			wf.W.FlushImage()
+		}
+	}
 }
