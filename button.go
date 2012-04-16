@@ -16,6 +16,7 @@ func NewButton(label string) (b *Button) {
 	b.MakeChannels()
 	b.Label = label
 
+	b.Min = Coord{0, 0}
 	b.Size = Coord{100, 30}
 
 	go b.handleEvents()
@@ -28,7 +29,6 @@ func NewButton(label string) (b *Button) {
 }
 
 func (b *Button) draw(gc draw2d.GraphicContext) {
-	gc.Save()
 	gc.SetStrokeColor(color.Black)
 	if b.pressed {
 		gc.SetFillColor(color.RGBA{150, 150, 150, 255})
@@ -37,7 +37,6 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	}
 	draw2d.Rect(gc, 0, 0, b.Size.X, b.Size.Y)
 	gc.FillStroke()
-	gc.Restore()
 }
 
 func (b *Button) handleEvents() {
@@ -49,8 +48,9 @@ func (b *Button) handleEvents() {
 		case <-b.MouseUpEvents:
 			b.pressed = false
 			b.Parent.Redraw <- b.BoundsInParent()
-		case gc := <-b.Draw:
-			b.doPaint(gc)
+		case dr := <-b.Draw:
+			b.doPaint(dr.GC)
+			dr.Done<- true
 		}
 	}
 }

@@ -15,6 +15,12 @@ func init() {
 	}
 }
 
+type DrawRequest struct {
+	GC draw2d.GraphicContext
+	Dirty Bounds
+	Done chan bool
+}
+
 // The Block type is a basic unit that can receive events and draw itself.
 type Block struct {
 	Parent *Foundation
@@ -26,7 +32,7 @@ type Block struct {
 	allEventsIn     chan<- interface{}
 	allEventsOut    <-chan interface{}
 
-	Draw            chan draw2d.GraphicContext
+	Draw            chan DrawRequest
 	Redraw          chan Bounds
 
 	Paint func(gc draw2d.GraphicContext)
@@ -40,6 +46,13 @@ type Block struct {
 func (b *Block) doPaint(gc draw2d.GraphicContext) {
 	if b.Paint != nil {
 		b.Paint(gc)
+	}
+}
+
+func (b *Block) draw() {
+	for dr := range b.Draw {
+		b.doPaint(dr.GC)
+		dr.Done <- true
 	}
 }
 
@@ -68,7 +81,7 @@ func (b *Block) MakeChannels() {
 	b.CloseEvents = make(chan wde.CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
-	b.Draw = make(chan draw2d.GraphicContext)
+	b.Draw = make(chan DrawRequest)
 	b.Redraw = make(chan Bounds)
 	b.allEventsIn, b.allEventsOut = QueuePipe()
 	go b.handleSplitEvents()
@@ -94,20 +107,25 @@ func (f *Foundation) AddBlock(b *Block) {
 func (f *Foundation) handleDrawing() {
 	for {
 		select {
-		case gc := <-f.Draw:
+		case dr := <-f.Draw:
 			if f.Paint != nil {
-				f.Paint(gc)
+				f.Paint(dr.GC)
 			}
 			for _, child := range f.Children {
-				gc.Save()
+				dr.GC.Save()
 
 				// TODO: clip to child.BoundsInParent()?
+				dr.GC.Translate(child.Min.X, child.Min.Y)
+				cdr := DrawRequest{
+					GC: dr.GC,
+					Done: make(chan bool),
+				}
+				child.Draw <- dr
+				<- cdr.Done
 
-				gc.Translate(child.Min.X, child.Min.Y)
-				child.Draw <- gc
-
-				gc.Restore()
+				dr.GC.Restore()
 			}
+			dr.Done<- true
 		case dirtyBounds := <-f.Redraw:
 			dirtyBounds.Min.X -= f.Min.X
 			dirtyBounds.Min.Y -= f.Min.Y
@@ -127,6 +145,7 @@ func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 	return
 }
 
+// dispense events to children, as appropriate
 func (f *Foundation) handleEvents() {
 	for {
 		select {
@@ -139,16 +158,16 @@ func (f *Foundation) handleEvents() {
 			if b == nil {
 				break
 			}
-			e.X -= int(b.Min.X)
-			e.Y -= int(b.Min.Y)
+			e.Loc.X -= b.Min.X
+			e.Loc.Y -= b.Min.Y
 			b.allEventsIn <- e
 		case e := <-f.MouseUpEvents:
 			b := f.BlockForCoord(e.Loc)
 			if b == nil {
 				break
 			}
-			e.X -= int(b.Min.X)
-			e.Y -= int(b.Min.Y)
+			e.Loc.X -= b.Min.X
+			e.Loc.Y -= b.Min.Y
 			b.allEventsIn <- e
 		}
 	}
@@ -209,7 +228,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 }
 
 func (wf *WindowFoundation) handleWindowDrawing() {
-
+	// TODO: collect a dirty region (possibly disjoint), and draw in one go?
 
 	for {
 		select {
@@ -224,10 +243,14 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				gc.Save()
 
 				// TODO: clip to child.BoundsInParent()?
-
+				//gc.Translate(child.Min.X, child.Min.Y)
 				gc.Translate(child.Min.X, child.Min.Y)
-				child.Draw <- gc
-
+				cdr := DrawRequest{
+					GC: gc,
+					Done: make(chan bool),
+				}
+				child.Draw <- cdr
+				<-cdr.Done
 				gc.Restore()
 			}
 
