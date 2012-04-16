@@ -229,14 +229,14 @@ func (wf *WindowFoundation) handleWindowEvents() {
 			wf.MouseDownEvents <- MouseDownEvent{
 				MouseDownEvent: e,
 				MouseLocator: MouseLocator {
-					Loc: Coord{float64(e.X), float64(e.Y)},
+					Loc: Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		case wde.MouseUpEvent:
 			wf.MouseUpEvents <- MouseUpEvent{
 				MouseUpEvent: e,
 				MouseLocator: MouseLocator {
-					Loc: Coord{float64(e.X), float64(e.Y)},
+					Loc: Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		}

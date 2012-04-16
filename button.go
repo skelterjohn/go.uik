@@ -1,14 +1,19 @@
 package uik
 
 import (
+	"github.com/skelterjohn/go.wde"
 	"code.google.com/p/draw2d/draw2d"
 	"image/color"
+	"fmt"
 )
 
 type Button struct {
 	Block
 	Label string
 	pressed bool
+
+	Click chan<- wde.Button
+	click chan wde.Button
 }
 
 func NewButton(label string) (b *Button) {
@@ -19,7 +24,11 @@ func NewButton(label string) (b *Button) {
 	b.Min = Coord{0, 0}
 	b.Size = Coord{100, 30}
 
+	b.click = make(chan wde.Button)
+	b.Click = b.click
+
 	go b.handleEvents()
+	go b.handleState()
 
 	b.Paint = func(gc draw2d.GraphicContext) {
 		b.draw(gc)
@@ -39,6 +48,15 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	gc.FillStroke()
 }
 
+func (b *Button) handleState() {
+	for {
+		select {
+		case which := <-b.click:
+			fmt.Println("clicked", which)
+		}
+	}
+}
+
 func (b *Button) handleEvents() {
 	b.ListenedChannels[b.MouseDownEvents] = true
 	b.ListenedChannels[b.MouseUpEvents] = true
@@ -47,8 +65,9 @@ func (b *Button) handleEvents() {
 		case <-b.MouseDownEvents:
 			b.pressed = true
 			b.Parent.Redraw <- b.BoundsInParent()
-		case <-b.MouseUpEvents:
+		case e := <-b.MouseUpEvents:
 			b.pressed = false
+			b.Click <- e.Which
 			b.Parent.Redraw <- b.BoundsInParent()
 		case dr := <-b.Draw:
 			b.doPaint(dr.GC)
