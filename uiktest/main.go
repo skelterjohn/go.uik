@@ -10,8 +10,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	w.W.SetTitle("go.uik")
 	b := uik.NewButton("Hi")
 	w.AddBlock(&b.Block)
 	w.Show()
-	select {}
+	<-w.Done
 }
