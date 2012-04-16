@@ -37,7 +37,6 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	}
 	draw2d.Rect(gc, 0, 0, b.Size.X, b.Size.Y)
 	gc.FillStroke()
-	gc.Stroke()
 	gc.Restore()
 }
 
@@ -51,7 +50,7 @@ func (b *Button) handleEvents() {
 			b.pressed = false
 			b.Parent.Redraw <- b.BoundsInParent()
 		case gc := <-b.Draw:
-			b.Paint(gc)
+			b.doPaint(gc)
 		}
 	}
 }

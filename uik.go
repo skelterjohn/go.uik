@@ -37,6 +37,12 @@ type Block struct {
 	Size Coord
 }
 
+func (b *Block) doPaint(gc draw2d.GraphicContext) {
+	if b.Paint != nil {
+		b.Paint(gc)
+	}
+}
+
 func (b *Block) handleSplitEvents() {
 	for e := range b.allEventsOut {
 		switch e := e.(type) {
@@ -213,9 +219,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 			gc.BeginPath()
 			// TODO: pass dirtyBounds too, to avoid redrawing out of reach components
 			_ = dirtyBounds
-			if wf.Paint != nil {
-				wf.Paint(gc)
-			}
+			wf.doPaint(gc)
 			for _, child := range wf.Children {
 				gc.Save()
 
