@@ -199,7 +199,7 @@ func (f *Foundation) handleEvents() {
 				be.Loc.Y -= b.Min.Y
 				b.allEventsIn <- be
 			}
-			if origin, ok := dragOriginBlocks[e.Which]; ok {
+			if origin, ok := dragOriginBlocks[e.Which]; ok && origin != b {
 				oe := e
 				oe.Loc.X -= origin.Min.X
 				oe.Loc.Y -= origin.Min.Y
