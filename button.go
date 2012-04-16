@@ -22,7 +22,7 @@ func NewButton(label string) (b *Button) {
 	b.Label = label
 
 	b.Min = Coord{0, 0}
-	b.Size = Coord{100, 30}
+	b.Size = Coord{100, 50}
 
 	b.click = make(chan wde.Button)
 	b.Click = b.click
@@ -47,7 +47,6 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	draw2d.Rect(gc, 0, 0, b.Size.X, b.Size.Y)
 	gc.FillStroke()
 	gc.SetFontSize(12)
-	gc.Translate(10, -10)
 	gc.FillString(b.Label)
 	gc.FillStroke()
 	gc.Stroke()
