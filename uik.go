@@ -1,6 +1,8 @@
 package uik
 
 import (
+	"image"
+	"image/draw"
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/go.wde"
 	"github.com/skelterjohn/go.wde/xgb"
@@ -16,9 +18,7 @@ func init() {
 }
 
 type DrawRequest struct {
-	GC draw2d.GraphicContext
 	Dirty Bounds
-	Done chan bool
 }
 
 // The Block type is a basic unit that can receive events and draw itself.
@@ -38,6 +38,8 @@ type Block struct {
 	Redraw          chan Bounds
 
 	Paint func(gc draw2d.GraphicContext)
+	Buffer draw.Image
+	ParentDrawBuffer chan image.Image
 
 	// minimum point relative to the block's parent: only the parent should set this
 	Min Coord
@@ -45,16 +47,22 @@ type Block struct {
 	Size Coord
 }
 
+func (b *Block) PrepareBuffer() (gc draw2d.GraphicContext) {
+	min := image.Point{int(b.Min.X), int(b.Min.Y)}
+	max := image.Point{int(b.Min.X+b.Size.X), int(b.Min.Y+b.Size.Y)}
+	if b.Buffer == nil || b.Buffer.Bounds().Min != min || b.Buffer.Bounds().Max != max {
+		b.Buffer = image.NewRGBA(image.Rectangle {
+			Min: min,
+			Max: max,
+		})
+	}
+	gc = draw2d.NewGraphicContext(b.Buffer)
+	return
+}
+
 func (b *Block) doPaint(gc draw2d.GraphicContext) {
 	if b.Paint != nil {
 		b.Paint(gc)
-	}
-}
-
-func (b *Block) draw() {
-	for dr := range b.Draw {
-		b.doPaint(dr.GC)
-		dr.Done <- true
 	}
 }
 
@@ -101,9 +109,15 @@ func (b *Block) MakeChannels() {
 type Foundation struct {
 	Block
 	Children    []*Block
+	DrawBuffers chan image.Image
 
 	// this block currently has keyboard priority
 	KeyboardBlock    *Block
+}
+
+func (f *Foundation) MakeChannels() {
+	f.Block.MakeChannels()
+	f.DrawBuffers = make(chan image.Image)
 }
 
 func (f *Foundation) AddBlock(b *Block) {
@@ -111,6 +125,7 @@ func (f *Foundation) AddBlock(b *Block) {
 	// TODO: resize the block in a clever way
 	f.Children = append(f.Children, b)
 	b.Parent = f
+	b.ParentDrawBuffer = f.DrawBuffers
 }
 
 func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
@@ -172,29 +187,28 @@ func (f *Foundation) handleEvents() {
 			}
 
 		case dr := <-f.Draw:
+			bgc := f.PrepareBuffer()
 			if f.Paint != nil {
-				f.Paint(dr.GC)
+				f.Paint(bgc)
 			}
 			for _, child := range f.Children {
-				dr.GC.Save()
-
 				translatedDirty := dr.Dirty
 				translatedDirty.Min.X -= child.Min.X
 				translatedDirty.Min.Y -= child.Min.Y
 
-				// TODO: clip to child.BoundsInParent()?
-				dr.GC.Translate(child.Min.X, child.Min.Y)
 				cdr := DrawRequest{
-					GC: dr.GC,
 					Dirty: translatedDirty,
-					Done: make(chan bool),
 				}
 				child.Draw <- cdr
-				<- cdr.Done
 
-				dr.GC.Restore()
 			}
-			dr.Done<- true
+		case buffer := <-f.DrawBuffers:
+			bgc := f.PrepareBuffer()
+			bgc.DrawImage(buffer)
+			if f.ParentDrawBuffer != nil {
+				f.ParentDrawBuffer <- f.Buffer
+			}
+
 		}
 	}
 }
@@ -216,6 +230,9 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 	wf.MakeChannels()
 
 	wf.Size = Coord{float64(width), float64(height)}
+	wf.Paint = func(gc draw2d.GraphicContext) {
+		gc.Clear()
+	}
 
 	go wf.handleWindowEvents()
 	go wf.handleWindowDrawing()
@@ -260,6 +277,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 
 func (wf *WindowFoundation) handleWindowDrawing() {
 	// TODO: collect a dirty region (possibly disjoint), and draw in one go?
+	wf.ParentDrawBuffer = make(chan image.Image)
 
 	for {
 		select {
@@ -272,12 +290,13 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 			wf.doPaint(gc)
 
 			dr := DrawRequest{
-				GC: gc,
 				Dirty: dirtyBounds,
-				Done: make(chan bool),
 			}
 			wf.Draw <-dr
-			<-dr.Done
+
+			wf.W.FlushImage()
+		case buffer := <- wf.ParentDrawBuffer:
+			draw.Draw(wf.W.Screen(), buffer.Bounds(), buffer, image.Point{0, 0}, draw.Src)
 
 			wf.W.FlushImage()
 		}

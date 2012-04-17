@@ -63,9 +63,10 @@ func (l *Label) handleEvents() {
 			if l.Parent != nil {
 				l.Parent.Redraw <- l.BoundsInParent()
 			}
-		case dr := <-l.Draw:
-			l.doPaint(dr.GC)
-			dr.Done<- true
+		case <-l.Draw:
+			bgc := l.PrepareBuffer()
+			l.doPaint(bgc)
+			l.ParentDrawBuffer <- l.Buffer
 		}
 	}
 }

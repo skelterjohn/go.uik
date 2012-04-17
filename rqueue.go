@@ -7,7 +7,7 @@ type RB struct {
 
 func (rb *RB) Enqueue(x interface{}) {
 	if rb.length >= len(rb.data) {
-		rb.sizeUp(2*rb.length)
+		rb.sizeUp(2*rb.length+1)
 	}
 	index := rb.start + rb.length
 	index = index % len(rb.data)
