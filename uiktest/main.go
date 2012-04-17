@@ -17,10 +17,9 @@ func main() {
 	
 	bw := width/4
 	bh := width/4
-	borigin := uik.Coord{width/2 - bw/2, height/2 - bh/2}
-	bsize   := uik.Coord{bw, bh}
+	bsize := uik.Coord{bw, bh}
 	
-	b := uik.NewButton(borigin, bsize, "Hi")
+	b := uik.NewButton(bsize, "Hi")
 	w.AddBlock(&b.Block)
 	w.Show()
 	<-w.Done

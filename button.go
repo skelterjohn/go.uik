@@ -15,13 +15,13 @@ type Button struct {
 	click chan wde.Button
 }
 
-func NewButton(label string) (b *Button) {
+func NewButton(size Coord, label string) (b *Button) {
 	b = new(Button)
 	b.MakeChannels()
-	b.Label = NewLabel(Coord{100, 50}, label)
+	b.Label = NewLabel(size, label)
 
 	b.Min = Coord{0, 0}
-	b.Size = Coord{100, 50}
+	b.Size = size
 
 	b.click = make(chan wde.Button)
 	b.Click = b.click
