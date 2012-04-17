@@ -45,6 +45,8 @@ func (l *Label) draw(gc draw2d.GraphicContext) {
 	
 	offset := l.Size.Y - (l.Size.Y - height) / 2
 
+	safeRect(gc, Coord{0, 0}, l.Size)
+	gc.FillStroke()
 	gc.Translate(10, offset)
 	gc.SetFontSize(l.FontSize)
 	gc.FillString(l.Text)
