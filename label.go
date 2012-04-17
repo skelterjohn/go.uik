@@ -15,11 +15,11 @@ type Label struct {
 	FontSizeCh chan float64
 }
 
-func NewLabel(text string) (l *Label) {
+func NewLabel(size Coord, text string) (l *Label) {
 	l = new(Label)
 	l.MakeChannels()
 
-	l.Size = Coord{100, 50}
+	l.Size = size
 
 	l.TextCh = make(chan string)
 	l.FontSizeCh = make(chan float64)
