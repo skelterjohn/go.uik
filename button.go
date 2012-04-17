@@ -15,13 +15,13 @@ type Button struct {
 	click chan wde.Button
 }
 
-func NewButton(label string) (b *Button) {
+func NewButton(origin Coord, size Coord, label string) (b *Button) {
 	b = new(Button)
 	b.MakeChannels()
-	b.Label = NewLabel(label)
+	b.Label = NewLabel(size, label)
 
-	b.Min = Coord{0, 0}
-	b.Size = Coord{100, 50}
+	b.Min = origin
+	b.Size = size
 
 	b.click = make(chan wde.Button)
 	b.Click = b.click
@@ -80,11 +80,10 @@ func (b *Button) handleEvents() {
 			b.pressed = false
 			b.Click <- e.Which
 			b.Parent.Redraw <- b.BoundsInParent()
-		case <-b.Draw:
-			bgc := b.PrepareBuffer()
-			b.doPaint(bgc)
-			b.Label.doPaint(bgc)
-			b.ParentDrawBuffer <- b.Buffer
+		case dr := <-b.Draw:
+			b.doPaint(dr.GC)
+			b.Label.doPaint(dr.GC)
+			dr.Done<- true
 		}
 	}
 }
