@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/draw"
 	"code.google.com/p/draw2d/draw2d"
-	"github.com/skelterjohn/go.wde"
 )
 
 // The Block type is a basic unit that can receive events and draw itself.
@@ -13,14 +12,14 @@ type Block struct {
 
 	ListenedChannels map[interface{}]bool
 
-	CloseEvents     chan wde.CloseEvent
+	CloseEvents     chan CloseEvent
 	MouseDownEvents chan MouseDownEvent
 	MouseUpEvents   chan MouseUpEvent
+	Redraw          chan RedrawEvent
 
 	allEventsIn     chan<- interface{}
 	allEventsOut    <-chan interface{}
 
-	Redraw          chan Bounds
 
 	Paint func(gc draw2d.GraphicContext)
 	Buffer draw.Image
@@ -62,7 +61,7 @@ func (b *Block) handleSplitEvents() {
 			if b.ListenedChannels[b.MouseUpEvents] {
 				b.MouseUpEvents <- e
 			}
-		case wde.CloseEvent:
+		case CloseEvent:
 			if b.ListenedChannels[b.CloseEvents] {
 				b.CloseEvents <- e
 			}
@@ -80,10 +79,10 @@ func (b *Block) BoundsInParent() (bounds Bounds) {
 
 func (b *Block) MakeChannels() {
 	b.ListenedChannels = make(map[interface{}]bool)
-	b.CloseEvents = make(chan wde.CloseEvent)
+	b.CloseEvents = make(chan CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
-	b.Redraw = make(chan Bounds)
+	b.Redraw = make(chan RedrawEvent)
 	b.allEventsIn, b.allEventsOut = QueuePipe()
 	go b.handleSplitEvents()
 }

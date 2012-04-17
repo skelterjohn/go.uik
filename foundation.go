@@ -40,14 +40,6 @@ func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 	return
 }
 
-func (f *Foundation) handleRedraw() {
-	for dirtyBounds := range f.Redraw {
-		dirtyBounds.Min.X -= f.Min.X
-		dirtyBounds.Min.Y -= f.Min.Y
-		f.Parent.Redraw <- dirtyBounds
-	}
-}
-
 // dispense events to children, as appropriate
 func (f *Foundation) handleEvents() {
 	f.ListenedChannels[f.CloseEvents] = true
@@ -87,17 +79,17 @@ func (f *Foundation) handleEvents() {
 				origin.allEventsIn <- oe
 			}
 
-		case bounds := <-f.Redraw:
+		case e := <-f.Redraw:
 			bgc := f.PrepareBuffer()
 			if f.Paint != nil {
 				f.Paint(bgc)
 			}
 			for _, child := range f.Children {
-				translatedDirty := bounds
+				translatedDirty := e.Bounds
 				translatedDirty.Min.X -= child.Min.X
 				translatedDirty.Min.Y -= child.Min.Y
 
-				child.Redraw <- translatedDirty
+				child.Redraw <- RedrawEvent{translatedDirty}
 
 			}
 		case buffer := <-f.DrawBuffers:

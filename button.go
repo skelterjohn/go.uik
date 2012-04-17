@@ -75,11 +75,11 @@ func (b *Button) handleEvents() {
 		select {
 		case <-b.MouseDownEvents:
 			b.pressed = true
-			b.Parent.Redraw <- b.BoundsInParent()
+			b.Parent.Redraw <- RedrawEvent{b.BoundsInParent()}
 		case e := <-b.MouseUpEvents:
 			b.pressed = false
 			b.Click <- e.Which
-			b.Parent.Redraw <- b.BoundsInParent()
+			b.Parent.Redraw <- RedrawEvent{b.BoundsInParent()}
 		case <-b.Redraw:
 			bgc := b.PrepareBuffer()
 			b.doPaint(bgc)

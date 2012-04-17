@@ -37,7 +37,7 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 
 func (wf *WindowFoundation) Show() {
 	wf.W.Show()
-	wf.Redraw <- wf.BoundsInParent()
+	wf.Redraw <- RedrawEvent{wf.BoundsInParent()}
 }
 
 // wraps mouse events with float64 coordinates
@@ -47,7 +47,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 	for e := range wf.W.EventChan() {
 		switch e := e.(type) {
 		case wde.CloseEvent:
-			wf.CloseEvents <- e
+			wf.CloseEvents <- CloseEvent(e)
 			wf.W.Close()
 			done <- true
 		case wde.MouseDownEvent:

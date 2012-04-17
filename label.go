@@ -57,11 +57,11 @@ func (l *Label) handleEvents() {
 		select {
 		case l.Text = <-l.TextCh:
 			if l.Parent != nil {
-				l.Parent.Redraw <- l.BoundsInParent()
+				l.Parent.Redraw <- RedrawEvent{l.BoundsInParent()}
 			}
 		case l.FontSize = <-l.FontSizeCh:
 			if l.Parent != nil {
-				l.Parent.Redraw <- l.BoundsInParent()
+				l.Parent.Redraw <- RedrawEvent{l.BoundsInParent()}
 			}
 		case <-l.Redraw:
 			bgc := l.PrepareBuffer()
