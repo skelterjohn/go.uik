@@ -26,7 +26,7 @@ func (f *Foundation) AddBlock(b *Block) {
 	// TODO: resize the block in a clever way
 	f.Children = append(f.Children, b)
 	b.Parent = f
-	b.ParentDrawBuffer = f.DrawBuffers
+	b.Compositor = f.DrawBuffers
 }
 
 func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
@@ -87,27 +87,24 @@ func (f *Foundation) handleEvents() {
 				origin.allEventsIn <- oe
 			}
 
-		case dr := <-f.Draw:
+		case bounds := <-f.Redraw:
 			bgc := f.PrepareBuffer()
 			if f.Paint != nil {
 				f.Paint(bgc)
 			}
 			for _, child := range f.Children {
-				translatedDirty := dr.Dirty
+				translatedDirty := bounds
 				translatedDirty.Min.X -= child.Min.X
 				translatedDirty.Min.Y -= child.Min.Y
 
-				cdr := DrawRequest{
-					Dirty: translatedDirty,
-				}
-				child.Draw <- cdr
+				child.Redraw <- translatedDirty
 
 			}
 		case buffer := <-f.DrawBuffers:
 			bgc := f.PrepareBuffer()
 			bgc.DrawImage(buffer)
-			if f.ParentDrawBuffer != nil {
-				f.ParentDrawBuffer <- f.Buffer
+			if f.Compositor != nil {
+				f.Compositor <- f.Buffer
 			}
 
 		}

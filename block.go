@@ -20,12 +20,11 @@ type Block struct {
 	allEventsIn     chan<- interface{}
 	allEventsOut    <-chan interface{}
 
-	Draw            chan DrawRequest
 	Redraw          chan Bounds
 
 	Paint func(gc draw2d.GraphicContext)
 	Buffer draw.Image
-	ParentDrawBuffer chan image.Image
+	Compositor chan image.Image
 
 	// minimum point relative to the block's parent: only the parent should set this
 	Min Coord
@@ -84,7 +83,6 @@ func (b *Block) MakeChannels() {
 	b.CloseEvents = make(chan wde.CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
-	b.Draw = make(chan DrawRequest)
 	b.Redraw = make(chan Bounds)
 	b.allEventsIn, b.allEventsOut = QueuePipe()
 	go b.handleSplitEvents()

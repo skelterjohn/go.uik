@@ -71,25 +71,22 @@ func (wf *WindowFoundation) handleWindowEvents() {
 
 func (wf *WindowFoundation) handleWindowDrawing() {
 	// TODO: collect a dirty region (possibly disjoint), and draw in one go?
-	wf.ParentDrawBuffer = make(chan image.Image)
+	wf.Compositor = make(chan image.Image)
 
 	for {
 		select {
-		case dirtyBounds := <-wf.Redraw:
-			gc := draw2d.NewGraphicContext(wf.W.Screen())
-			gc.Clear()
-			gc.BeginPath()
-			// TODO: pass dirtyBounds too, to avoid redrawing out of reach components
-			_ = dirtyBounds
-			wf.doPaint(gc)
+		// case dirtyBounds := <-wf.Redraw:
+		// 	gc := draw2d.NewGraphicContext(wf.W.Screen())
+		// 	gc.Clear()
+		// 	gc.BeginPath()
+		// 	// TODO: pass dirtyBounds too, to avoid redrawing out of reach components
+		// 	_ = dirtyBounds
+		// 	wf.doPaint(gc)
 
-			dr := DrawRequest{
-				Dirty: dirtyBounds,
-			}
-			wf.Draw <-dr
+		// 	wf.Redraw <-dirtyBounds
 
-			wf.W.FlushImage()
-		case buffer := <- wf.ParentDrawBuffer:
+		// 	wf.W.FlushImage()
+		case buffer := <- wf.Compositor:
 			draw.Draw(wf.W.Screen(), buffer.Bounds(), buffer, image.Point{0, 0}, draw.Src)
 			// TODO: don't do this every time - give a window for all expected buffers to 
 			//       come in before flushing prematurely

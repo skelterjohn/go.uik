@@ -80,11 +80,11 @@ func (b *Button) handleEvents() {
 			b.pressed = false
 			b.Click <- e.Which
 			b.Parent.Redraw <- b.BoundsInParent()
-		case <-b.Draw:
+		case <-b.Redraw:
 			bgc := b.PrepareBuffer()
 			b.doPaint(bgc)
 			b.Label.doPaint(bgc)
-			b.ParentDrawBuffer <- b.Buffer
+			b.Compositor <- b.Buffer
 		}
 	}
 }
