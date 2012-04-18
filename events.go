@@ -50,6 +50,12 @@ type CloseEvent struct {
 	wde.CloseEvent
 }
 
+type ResizeEvent struct {
+	wde.ResizeEvent
+	Size geom.Coord
+}
+
+
 type RedrawEventChan chan RedrawEvent
 func (ch RedrawEventChan) Stack(e RedrawEvent) {
 	for {

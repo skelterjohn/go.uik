@@ -69,6 +69,17 @@ func (wf *WindowFoundation) handleWindowEvents() {
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
+		case wde.ResizeEvent:
+			wf.ResizeEvents <- ResizeEvent{
+				ResizeEvent: e,
+				Size: geom.Coord{
+					X: float64(e.Width),
+					Y: float64(e.Height),
+				},
+			}
+			wf.Redraw <- RedrawEvent{
+				wf.Bounds(),
+			}
 		}
 	}
 }

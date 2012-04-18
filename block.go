@@ -17,13 +17,18 @@ type Block struct {
 
 	ListenedChannels map[interface{}]bool
 
+	allEventsIn     chan<- interface{}
+	allEventsOut    <-chan interface{}
+
+	// the event channels
+
 	CloseEvents     chan CloseEvent
 	MouseDownEvents chan MouseDownEvent
 	MouseUpEvents   chan MouseUpEvent
+	ResizeEvents    chan ResizeEvent
+
 	Redraw        chan RedrawEvent
 
-	allEventsIn     chan<- interface{}
-	allEventsOut    <-chan interface{}
 
 
 	Paint func(gc draw2d.GraphicContext)
@@ -36,12 +41,17 @@ type Block struct {
 
 func (b *Block) Initialize() {
 	b.Paint = ClearPaint
+
 	b.ListenedChannels = make(map[interface{}]bool)
+
+	b.allEventsIn, b.allEventsOut = QueuePipe()
+
 	b.CloseEvents = make(chan CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
+	b.ResizeEvents = make(chan ResizeEvent)
+
 	b.Redraw = make(chan RedrawEvent, 1)
-	b.allEventsIn, b.allEventsOut = QueuePipe()
 	go b.handleSplitEvents()
 }
 
@@ -96,6 +106,10 @@ func (b *Block) handleSplitEvents() {
 		case CloseEvent:
 			if b.ListenedChannels[b.CloseEvents] {
 				b.CloseEvents <- e
+			}
+		case ResizeEvent:
+			if b.ListenedChannels[b.ResizeEvents] {
+				b.ResizeEvents <- e
 			}
 		}
 	}

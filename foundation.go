@@ -22,6 +22,8 @@ type Foundation struct {
 
 	CompositeBlockRequests chan CompositeBlockRequest
 
+	DragOriginBlocks map[wde.Button][]*Block
+
 	// this block currently has keyboard priority
 	KeyboardBlock    *Block
 }
@@ -30,6 +32,7 @@ func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
 	f.ChildrenBounds = map[*Block]geom.Rect{}
+	f.DragOriginBlocks = map[wde.Button][]*Block{}
 }
 
 func (f *Foundation) RemoveBlock(b *Block) {
@@ -68,7 +71,7 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 		}
 	}(b, b.Compositor)
 	RedrawEventChan(f.Redraw).Stack(RedrawEvent{
-
+		bounds,
 	})
 }
 
@@ -137,13 +140,59 @@ func (f *Foundation) DoRedraw(e RedrawEvent) {
 	}
 }
 
+func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
+	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
+		bbs := f.ChildrenBounds[b]
+		if b == nil {
+			return
+		}
+		f.DragOriginBlocks[e.Which] = append(f.DragOriginBlocks[e.Which], b)
+		e.Loc.X -= bbs.Min.X
+		e.Loc.Y -= bbs.Min.Y
+		b.allEventsIn <- e
+	})
+}
+
+func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
+	touched := map[*Block]bool{}
+	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
+		touched[b] = true
+		bbs := f.ChildrenBounds[b]
+		if b != nil {
+			be := e
+			be.Loc.X -= bbs.Min.X
+			be.Loc.Y -= bbs.Min.Y
+			b.allEventsIn <- be
+		}
+	})
+	if origins, ok := f.DragOriginBlocks[e.Which]; ok {
+		for _, origin := range origins {
+			if touched[origin] {
+				continue
+			}
+			oe := e
+			obbs := f.ChildrenBounds[origin]
+			oe.Loc.X -= obbs.Min.X
+			oe.Loc.Y -= obbs.Min.Y
+			origin.allEventsIn <- oe
+		}
+	}
+	delete(f.DragOriginBlocks, e.Which)
+}
+
+func (f *Foundation) DoResizeEvent(e ResizeEvent) {
+	if e.Size == f.Size {
+		return
+	}
+	f.Size = e.Size
+	f.Buffer = nil
+}
+
 // dispense events to children, as appropriate
 func (f *Foundation) HandleEvents() {
 	f.ListenedChannels[f.CloseEvents] = true
 	f.ListenedChannels[f.MouseDownEvents] = true
 	f.ListenedChannels[f.MouseUpEvents] = true
-
-	var dragOriginBlocks = map[wde.Button][]*Block{}
 	// drag and up events for the same button get sent to the origin as well
 
 	for {
@@ -153,42 +202,11 @@ func (f *Foundation) HandleEvents() {
 				b.allEventsIn <- e
 			}
 		case e := <-f.MouseDownEvents:
-			f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
-				bbs := f.ChildrenBounds[b]
-				if b == nil {
-					return
-				}
-				dragOriginBlocks[e.Which] = append(dragOriginBlocks[e.Which], b)
-				e.Loc.X -= bbs.Min.X
-				e.Loc.Y -= bbs.Min.Y
-				b.allEventsIn <- e
-			})
+			f.DoMouseDownEvent(e)
 		case e := <-f.MouseUpEvents:
-			touched := map[*Block]bool{}
-			f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
-				touched[b] = true
-				bbs := f.ChildrenBounds[b]
-				if b != nil {
-					be := e
-					be.Loc.X -= bbs.Min.X
-					be.Loc.Y -= bbs.Min.Y
-					b.allEventsIn <- be
-				}
-			})
-			if origins, ok := dragOriginBlocks[e.Which]; ok {
-				for _, origin := range origins {
-					if touched[origin] {
-						continue
-					}
-					oe := e
-					obbs := f.ChildrenBounds[origin]
-					oe.Loc.X -= obbs.Min.X
-					oe.Loc.Y -= obbs.Min.Y
-					origin.allEventsIn <- oe
-				}
-			}
-			delete(dragOriginBlocks, e.Which)
-
+			f.DoMouseUpEvent(e)
+		case e := <-f.ResizeEvents:
+			f.DoResizeEvent(e)
 		case e := <-f.Redraw:
 			f.DoRedraw(e)
 		case cbr := <-f.CompositeBlockRequests:
