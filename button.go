@@ -91,13 +91,13 @@ func (b *Button) handleEvents() {
 		case <-b.MouseDownEvents:
 			b.pressed = true
 			b.Label.SetConfig<- ld
-			b.PaintAndComposite()
+			b.DoRedraw(RedrawEvent{b.Bounds()})
 		case e := <-b.MouseUpEvents:
 			b.pressed = false
-			b.PaintAndComposite()
 			for c := range b.Clickers {
 				c <- e.Which
 			}
+			b.DoRedraw(RedrawEvent{b.Bounds()})
 		case cbr := <-b.CompositeBlockRequests:
 			b.DoPaint(b.PrepareBuffer())
 			b.DoCompositeBlockRequest(cbr)

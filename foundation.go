@@ -71,7 +71,7 @@ func (f *Foundation) PlaceBlock(b *Block, bounds Bounds) {
 	})
 }
 
-func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
+func (f *Foundation) BlocksForCoord(p Coord) (bs []*Block) {
 	// quad-tree one day?
 	for _, bl := range f.Children {
 		bbs, ok := f.ChildrenBounds[bl]
@@ -79,11 +79,26 @@ func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 			continue
 		}
 		if bbs.Contains(p) {
-			b = bl
+			bs = append(bs, bl)
+		}
+	}
+	return
+}
+
+func (f *Foundation) InvokeOnBlocksUnder(p Coord, foo func(*Block)) {
+	// quad-tree one day?
+	for _, bl := range f.Children {
+		bbs, ok := f.ChildrenBounds[bl]
+		if !ok {
+			continue
+		}
+		if bbs.Contains(p) {
+			foo(bl)
 			return
 		}
 	}
 	return
+
 }
 
 func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
@@ -127,7 +142,7 @@ func (f *Foundation) HandleEvents() {
 	f.ListenedChannels[f.MouseDownEvents] = true
 	f.ListenedChannels[f.MouseUpEvents] = true
 
-	var dragOriginBlocks = map[wde.Button]*Block{}
+	var dragOriginBlocks = map[wde.Button][]*Block{}
 	// drag and up events for the same button get sent to the origin as well
 
 	for {
@@ -137,30 +152,39 @@ func (f *Foundation) HandleEvents() {
 				b.allEventsIn <- e
 			}
 		case e := <-f.MouseDownEvents:
-			b := f.BlockForCoord(e.Loc)
-			bbs := f.ChildrenBounds[b]
-			if b == nil {
-				break
-			}
-			dragOriginBlocks[e.Which] = b
-			e.Loc.X -= bbs.Min.X
-			e.Loc.Y -= bbs.Min.Y
-			b.allEventsIn <- e
+			f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
+				bbs := f.ChildrenBounds[b]
+				if b == nil {
+					return
+				}
+				dragOriginBlocks[e.Which] = append(dragOriginBlocks[e.Which], b)
+				e.Loc.X -= bbs.Min.X
+				e.Loc.Y -= bbs.Min.Y
+				b.allEventsIn <- e
+			})
 		case e := <-f.MouseUpEvents:
-			b := f.BlockForCoord(e.Loc)
-			bbs := f.ChildrenBounds[b]
-			if b != nil {
-				be := e
-				be.Loc.X -= bbs.Min.X
-				be.Loc.Y -= bbs.Min.Y
-				b.allEventsIn <- be
-			}
-			if origin, ok := dragOriginBlocks[e.Which]; ok && origin != b {
-				oe := e
-				obbs := f.ChildrenBounds[origin]
-				oe.Loc.X -= obbs.Min.X
-				oe.Loc.Y -= obbs.Min.Y
-				origin.allEventsIn <- oe
+			touched := map[*Block]bool{}
+			f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
+				touched[b] = true
+				bbs := f.ChildrenBounds[b]
+				if b != nil {
+					be := e
+					be.Loc.X -= bbs.Min.X
+					be.Loc.Y -= bbs.Min.Y
+					b.allEventsIn <- be
+				}
+			})
+			if origins, ok := dragOriginBlocks[e.Which]; ok {
+				for _, origin := range origins {
+					if touched[origin] {
+						continue
+					}
+					oe := e
+					obbs := f.ChildrenBounds[origin]
+					oe.Loc.X -= obbs.Min.X
+					oe.Loc.Y -= obbs.Min.Y
+					origin.allEventsIn <- oe
+				}
 			}
 			delete(dragOriginBlocks, e.Which)
 
