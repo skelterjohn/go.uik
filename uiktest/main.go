@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/skelterjohn/go.uik"
+	"github.com/skelterjohn/go.uik/widgets"
 	"github.com/skelterjohn/geom"
 )
 
@@ -18,10 +19,10 @@ func main() {
 	
 	bsize := geom.Coord{100, 50}
 	
-	b := uik.NewButton(bsize, "Hi")
+	b := widgets.NewButton(bsize, "Hi")
 	ld := <-b.Label.GetConfig
 	ld.Text = "clicked!"
-	clicker := make(uik.Clicker)
+	clicker := make(widgets.Clicker)
 	b.AddClicker<- clicker
 	go func() {
 		for _ = range clicker {
@@ -34,10 +35,10 @@ func main() {
 		Max: geom.Coord{150, 200},
 	})
 	
-	b2 := uik.NewButton(bsize, "there")
+	b2 := widgets.NewButton(bsize, "there")
 	ld2 := <-b2.Label.GetConfig
 	ld2.Text = "BAM"
-	clicker2 := make(uik.Clicker)
+	clicker2 := make(widgets.Clicker)
 	b2.AddClicker<- clicker2
 	go func() {
 		for _ = range clicker2 {

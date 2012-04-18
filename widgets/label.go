@@ -1,4 +1,4 @@
-package uik
+package widgets
 
 import (
 	"code.google.com/p/draw2d/draw2d"

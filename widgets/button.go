@@ -1,4 +1,4 @@
-package uik
+package widgets
 
 import (
 	"github.com/skelterjohn/go.uik"
