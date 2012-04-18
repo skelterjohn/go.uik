@@ -19,12 +19,25 @@ func main() {
 	}
 	w.W.SetTitle("GoUI")
 
+	// Here we create a flow layout, which just lines up its blocks from
+	// left to right.
 	fl := layouts.NewFlow(wbounds.Max)
+	// We add it to the window, taking up the entire space the window has.
+	// At some point we'd need to create a mechanism for blocks and foundations
+	// to resize themselves by sending hints up to their parents.
 	w.PlaceBlock(&fl.Block, wbounds)
 	
+
+	// Create a button with the given size and label
 	b := widgets.NewButton(geom.Coord{100, 50}, "Hi")
+	// Here we get the button's label's data
 	ld := <-b.Label.GetConfig
+	// we modify the copy for a special message to display
 	ld.Text = "clicked!"
+
+	// the widget.Buttton has a special channels that sends out wde.Buttons
+	// whenever its clicked. Here we set up something that changes the
+	// label's text every time a click is received.
 	clicker := make(widgets.Clicker)
 	b.AddClicker<- clicker
 	go func() {
@@ -53,6 +66,7 @@ func main() {
 
 	w.Show()
 
+	// Here we set up a subscription on the window's close events.
 	done := make(chan interface{})
 	isDone := func(e interface{}) (accept, done bool) {
 		_, accept = e.(uik.CloseEvent)
@@ -61,5 +75,6 @@ func main() {
 	}
 	w.Block.Subscribe <- uik.EventSubscription{isDone, done}
 
+	// once a close event comes in on the subscription, end the program
 	<-done
 }
