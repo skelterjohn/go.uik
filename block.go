@@ -60,9 +60,17 @@ func (b *Block) PrepareBuffer() (gc draw2d.GraphicContext) {
 	return
 }
 
-func (b *Block) doPaint(gc draw2d.GraphicContext) {
+func (b *Block) DoPaint(gc draw2d.GraphicContext) {
 	if b.Paint != nil {
 		b.Paint(gc)
+	}
+}
+
+func (b *Block) PaintAndComposite() {
+	bgc := b.PrepareBuffer()
+	b.DoPaint(bgc)
+	b.Compositor <- CompositeRequest{
+		Buffer: b.Buffer,
 	}
 }
 

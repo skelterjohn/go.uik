@@ -66,7 +66,7 @@ func (l *Label) handleEvents() {
 			}
 		case <-l.RedrawOut:
 			bgc := l.PrepareBuffer()
-			l.doPaint(bgc)
+			l.DoPaint(bgc)
 			l.Compositor <- CompositeRequest {
 				l.Buffer,
 			}

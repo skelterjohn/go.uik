@@ -58,7 +58,7 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	}
 	safeRect(gc, Coord{0, 0}, b.Size)
 	gc.FillStroke()
-	b.Label.doPaint(gc)
+	b.Label.DoPaint(gc)
 }
 
 func (b *Button) handleState() {
@@ -78,25 +78,13 @@ func (b *Button) handleEvents() {
 		select {
 		case <-b.MouseDownEvents:
 			b.pressed = true
-			bgc := b.PrepareBuffer()
-			b.doPaint(bgc)
-			b.Compositor <- CompositeRequest{
-				Buffer: b.Buffer,
-			}
+			b.PaintAndComposite()
 		case e := <-b.MouseUpEvents:
 			b.pressed = false
 			b.Click <- e.Which
-			bgc := b.PrepareBuffer()
-			b.doPaint(bgc)
-			b.Compositor <- CompositeRequest{
-				Buffer: b.Buffer,
-			}
+			b.PaintAndComposite()
 		case <-b.RedrawOut:
-			bgc := b.PrepareBuffer()
-			b.doPaint(bgc)
-			b.Compositor <- CompositeRequest{
-				Buffer: b.Buffer,
-			}
+			b.PaintAndComposite()
 		}
 	}
 }
