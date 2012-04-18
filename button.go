@@ -17,7 +17,7 @@ type Button struct {
 
 func NewButton(size Coord, label string) (b *Button) {
 	b = new(Button)
-	b.MakeChannels()
+	b.Initialize()
 	b.Label = NewLabel(size, label)
 
 	b.Min = Coord{0, 0}
@@ -49,6 +49,7 @@ func safeRect(path draw2d.GraphicContext, min, max Coord) {
 }
 
 func (b *Button) draw(gc draw2d.GraphicContext) {
+
 	gc.SetStrokeColor(color.Black)
 	if b.pressed {
 		gc.SetFillColor(color.RGBA{150, 150, 150, 255})
@@ -57,6 +58,7 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	}
 	safeRect(gc, Coord{0, 0}, b.Size)
 	gc.FillStroke()
+	b.Label.doPaint(gc)
 }
 
 func (b *Button) handleState() {
@@ -71,20 +73,30 @@ func (b *Button) handleState() {
 func (b *Button) handleEvents() {
 	b.ListenedChannels[b.MouseDownEvents] = true
 	b.ListenedChannels[b.MouseUpEvents] = true
+
 	for {
 		select {
 		case <-b.MouseDownEvents:
 			b.pressed = true
-			b.Parent.Redraw <- RedrawEvent{b.BoundsInParent()}
+			bgc := b.PrepareBuffer()
+			b.doPaint(bgc)
+			b.Compositor <- CompositeRequest{
+				Buffer: b.Buffer,
+			}
 		case e := <-b.MouseUpEvents:
 			b.pressed = false
 			b.Click <- e.Which
-			b.Parent.Redraw <- RedrawEvent{b.BoundsInParent()}
-		case <-b.Redraw:
 			bgc := b.PrepareBuffer()
 			b.doPaint(bgc)
-			b.Label.doPaint(bgc)
-			b.Compositor <- b.Buffer
+			b.Compositor <- CompositeRequest{
+				Buffer: b.Buffer,
+			}
+		case <-b.RedrawOut:
+			bgc := b.PrepareBuffer()
+			b.doPaint(bgc)
+			b.Compositor <- CompositeRequest{
+				Buffer: b.Buffer,
+			}
 		}
 	}
 }

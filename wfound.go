@@ -21,7 +21,7 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 	if err != nil {
 		return
 	}
-	wf.MakeChannels()
+	wf.Initialize()
 
 	wf.Size = Coord{float64(width), float64(height)}
 	wf.Paint = func(gc draw2d.GraphicContext) {
@@ -37,7 +37,7 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 
 func (wf *WindowFoundation) Show() {
 	wf.W.Show()
-	wf.Redraw <- RedrawEvent{wf.BoundsInParent()}
+	wf.RedrawIn <- RedrawEvent{wf.BoundsInParent()}
 }
 
 // wraps mouse events with float64 coordinates
@@ -64,30 +64,18 @@ func (wf *WindowFoundation) handleWindowEvents() {
 					Loc: Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
-
 		}
 	}
 }
 
 func (wf *WindowFoundation) handleWindowDrawing() {
 	// TODO: collect a dirty region (possibly disjoint), and draw in one go?
-	wf.Compositor = make(chan image.Image)
+	wf.Compositor = make(chan CompositeRequest)
 
 	for {
 		select {
-		// case dirtyBounds := <-wf.Redraw:
-		// 	gc := draw2d.NewGraphicContext(wf.W.Screen())
-		// 	gc.Clear()
-		// 	gc.BeginPath()
-		// 	// TODO: pass dirtyBounds too, to avoid redrawing out of reach components
-		// 	_ = dirtyBounds
-		// 	wf.doPaint(gc)
-
-		// 	wf.Redraw <-dirtyBounds
-
-		// 	wf.W.FlushImage()
-		case buffer := <- wf.Compositor:
-			draw.Draw(wf.W.Screen(), buffer.Bounds(), buffer, image.Point{0, 0}, draw.Src)
+		case ce := <- wf.Compositor:
+			draw.Draw(wf.W.Screen(), ce.Buffer.Bounds(), ce.Buffer, image.Point{0, 0}, draw.Src)
 			// TODO: don't do this every time - give a window for all expected buffers to 
 			//       come in before flushing prematurely
 			wf.W.FlushImage()

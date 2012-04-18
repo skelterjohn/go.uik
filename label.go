@@ -17,7 +17,7 @@ type Label struct {
 
 func NewLabel(size Coord, text string) (l *Label) {
 	l = new(Label)
-	l.MakeChannels()
+	l.Initialize()
 
 	l.Size = size
 
@@ -57,16 +57,18 @@ func (l *Label) handleEvents() {
 		select {
 		case l.Text = <-l.TextCh:
 			if l.Parent != nil {
-				l.Parent.Redraw <- RedrawEvent{l.BoundsInParent()}
+				l.RedrawIn <- RedrawEvent{l.BoundsInParent()}
 			}
 		case l.FontSize = <-l.FontSizeCh:
 			if l.Parent != nil {
-				l.Parent.Redraw <- RedrawEvent{l.BoundsInParent()}
+				l.RedrawIn <- RedrawEvent{l.BoundsInParent()}
 			}
-		case <-l.Redraw:
+		case <-l.RedrawOut:
 			bgc := l.PrepareBuffer()
 			l.doPaint(bgc)
-			l.Compositor <- l.Buffer
+			l.Compositor <- CompositeRequest {
+				l.Buffer,
+			}
 		}
 	}
 }

@@ -1,7 +1,10 @@
 package uik
 
-// this code stolen from github.com/kylelemons/iq
+import (
+	"math"
+)
 
+// this type stolen from github.com/kylelemons/iq
 type Ring struct {
 	cnt, i int
 	data []interface{}
@@ -37,6 +40,7 @@ func (rb *Ring) grow(newSize int) {
 	rb.data = newData
 }
 
+// this function stolen from github.com/kylelemons/iq
 func RingIQ(in <-chan interface{}, next chan<- interface{}) {
 	var rb Ring
 	defer func() {
@@ -67,6 +71,7 @@ func RingIQ(in <-chan interface{}, next chan<- interface{}) {
 		}
 	}
 }
+
 func QueuePipe() (in chan<- interface{}, out <-chan interface{}) {
 	inch := make(chan interface{})
 	in = inch
@@ -75,3 +80,38 @@ func QueuePipe() (in chan<- interface{}, out <-chan interface{}) {
 	go RingIQ(inch, outch)
 	return
 }
+
+func StackRedrawEvents(Redraw chan RedrawEvent) (out <-chan RedrawEvent) {
+	outch := make(chan RedrawEvent)
+	out = outch
+	go func(Redraw, outch chan RedrawEvent) {
+		var e RedrawEvent
+		valid := false
+
+		loop:
+		for {
+			if !valid {
+				e, valid = <-Redraw
+				if !valid {
+					break
+				}
+			}
+			select {
+			case ne, ok := <-Redraw:
+				if !ok {
+					break loop
+				}
+				e.Bounds.Min.X = math.Min(e.Bounds.Min.X, ne.Bounds.Min.X)
+				e.Bounds.Min.Y = math.Min(e.Bounds.Min.Y, ne.Bounds.Min.Y)
+				e.Bounds.Max.X = math.Max(e.Bounds.Max.X, ne.Bounds.Max.X)
+				e.Bounds.Max.Y = math.Max(e.Bounds.Max.Y, ne.Bounds.Max.Y)
+			case outch<- e:
+				valid = false
+			}
+		}
+		close(outch)
+	}(Redraw, outch)
+
+	return
+}
+

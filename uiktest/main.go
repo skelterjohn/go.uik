@@ -15,9 +15,7 @@ func main() {
 	}
 	w.W.SetTitle("GoUI")
 	
-	bw := width/4
-	bh := width/4
-	bsize := uik.Coord{bw, bh}
+	bsize := uik.Coord{100, 50}
 	
 	b := uik.NewButton(bsize, "Hi")
 	w.AddBlock(&b.Block)
