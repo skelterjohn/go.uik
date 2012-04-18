@@ -44,7 +44,9 @@ type MouseUpEvent struct {
 	MouseLocator
 }
 
-type CloseEvent wde.CloseEvent
+type CloseEvent struct {
+	wde.CloseEvent
+}
 
 type RedrawEvent struct {
 	Bounds Bounds

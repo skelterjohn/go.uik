@@ -78,6 +78,7 @@ func (b *Button) handleEvents() {
 		select {
 		case <-b.MouseDownEvents:
 			b.pressed = true
+			b.Label.TextCh <- "pressing"
 			b.PaintAndComposite()
 		case e := <-b.MouseUpEvents:
 			b.pressed = false

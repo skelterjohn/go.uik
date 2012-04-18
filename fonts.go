@@ -21,7 +21,10 @@ func GetFontHeight(fd draw2d.FontData, size float64) (height float64) {
 }
 
 func RenderString(text string, fd draw2d.FontData, size float64, color color.Color) (buffer image.Image) {
-	height := GetFontHeight(fd, size)
+
+	const stretchFactor = 1.2
+
+	height := GetFontHeight(fd, size)*stretchFactor
 	widthMax := float64(len(text)) * size
 	
 	buf := image.NewRGBA(image.Rectangle{
@@ -30,7 +33,7 @@ func RenderString(text string, fd draw2d.FontData, size float64, color color.Col
 	})
 
 	gc := draw2d.NewGraphicContext(buf)
-	gc.Translate(0, height)
+	gc.Translate(0, height/stretchFactor)
 	gc.SetFontData(fd)
 	gc.SetFontSize(size)
 	gc.SetStrokeColor(color)

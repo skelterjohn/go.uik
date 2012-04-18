@@ -47,7 +47,9 @@ func (wf *WindowFoundation) handleWindowEvents() {
 	for e := range wf.W.EventChan() {
 		switch e := e.(type) {
 		case wde.CloseEvent:
-			wf.CloseEvents <- CloseEvent(e)
+			wf.CloseEvents <- CloseEvent{
+				CloseEvent: e,
+			}
 			wf.W.Close()
 			done <- true
 		case wde.MouseDownEvent:
