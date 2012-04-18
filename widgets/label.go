@@ -3,6 +3,7 @@ package uik
 import (
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
+	"github.com/skelterjohn/go.uik"
 	"image"
 	"image/color"
 )
@@ -14,7 +15,7 @@ type LabelData struct {
 }
 
 type Label struct {
-	Block
+	uik.Block
 
 	data LabelData
 	SetConfig chan<- LabelData
@@ -47,7 +48,7 @@ func NewLabel(size geom.Coord, data LabelData) (l *Label) {
 }
 
 func (l *Label) render() {
-	l.tbuf = RenderString(l.data.Text, DefaultFontData, l.data.FontSize, l.data.Color)
+	l.tbuf = uik.RenderString(l.data.Text, uik.DefaultFontData, l.data.FontSize, l.data.Color)
 	l.Buffer = nil
 }
 

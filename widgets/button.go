@@ -1,6 +1,7 @@
 package uik
 
 import (
+	"github.com/skelterjohn/go.uik"
 	"github.com/skelterjohn/go.wde"
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
@@ -10,7 +11,7 @@ import (
 type Clicker chan wde.Button
 
 type Button struct {
-	Foundation
+	uik.Foundation
 	Label *Label
 	pressed bool
 
@@ -92,13 +93,13 @@ func (b *Button) handleEvents() {
 		case <-b.MouseDownEvents:
 			b.pressed = true
 			b.Label.SetConfig<- ld
-			b.DoRedraw(RedrawEvent{b.Bounds()})
+			b.DoRedraw(uik.RedrawEvent{b.Bounds()})
 		case e := <-b.MouseUpEvents:
 			b.pressed = false
 			for c := range b.Clickers {
 				c <- e.Which
 			}
-			b.DoRedraw(RedrawEvent{b.Bounds()})
+			b.DoRedraw(uik.RedrawEvent{b.Bounds()})
 		case cbr := <-b.CompositeBlockRequests:
 			b.DoPaint(b.PrepareBuffer())
 			b.DoCompositeBlockRequest(cbr)
@@ -118,7 +119,7 @@ func (b *Button) handleEvents() {
 func clickerPipe(c Clicker) (head chan interface{}) {
 	head = make(chan interface{})
 	tail := make(chan interface{})
-	go RingIQ(head, tail, 0)
+	go uik.RingIQ(head, tail, 0)
 	go func() {
 		for click := range tail {
 			c <- click.(wde.Button)
