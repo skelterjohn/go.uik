@@ -18,11 +18,13 @@ func main() {
 	bsize := uik.Coord{100, 50}
 	
 	b := uik.NewButton(bsize, "Hi")
+	ld := <-b.Label.GetConfig
+	ld.Text = "clicked!"
 	clicker := make(uik.Clicker)
 	b.AddClicker<- clicker
 	go func() {
-		for b := range clicker {
-			fmt.Println("clicked", b)
+		for _ = range clicker {
+			b.Label.SetConfig<- ld
 		}
 	}()
 

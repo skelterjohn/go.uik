@@ -86,6 +86,41 @@ func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 	return
 }
 
+func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
+	b := cbr.Block
+	bounds, ok := f.ChildrenBounds[b]
+	if !ok {
+		return
+	}
+	f.PrepareBuffer()
+	draw.Draw(f.Buffer, bounds.Rectangle(), cbr.Buffer, image.Point{0, 0}, draw.Over)
+	if f.Compositor != nil {
+		f.Compositor <- CompositeRequest{
+			Buffer: f.Buffer,
+		}
+	}
+}
+
+func (f *Foundation) DoRedraw(e RedrawEvent) {
+	bgc := f.PrepareBuffer()
+	f.DoPaint(bgc)
+	for _, child := range f.Children {
+		translatedDirty := e.Bounds
+		bbs, ok := f.ChildrenBounds[child]
+		if !ok { continue }
+
+		translatedDirty.Min.X -= bbs.Min.X
+		translatedDirty.Min.Y -= bbs.Min.Y
+
+		RedrawEventChan(child.Redraw).Stack(RedrawEvent{translatedDirty})
+	}
+	if f.Compositor != nil {
+		f.Compositor <- CompositeRequest{
+			Buffer: f.Buffer,
+		}
+	}
+}
+
 // dispense events to children, as appropriate
 func (f *Foundation) HandleEvents() {
 	f.ListenedChannels[f.CloseEvents] = true
@@ -127,39 +162,12 @@ func (f *Foundation) HandleEvents() {
 				oe.Loc.Y -= obbs.Min.Y
 				origin.allEventsIn <- oe
 			}
+			delete(dragOriginBlocks, e.Which)
 
 		case e := <-f.Redraw:
-			bgc := f.PrepareBuffer()
-			f.DoPaint(bgc)
-			for _, child := range f.Children {
-				translatedDirty := e.Bounds
-				bbs, ok := f.ChildrenBounds[child]
-				if !ok { continue }
-
-				translatedDirty.Min.X -= bbs.Min.X
-				translatedDirty.Min.Y -= bbs.Min.Y
-
-				RedrawEventChan(child.Redraw).Stack(RedrawEvent{translatedDirty})
-			}
-			if f.Compositor != nil {
-				f.Compositor <- CompositeRequest{
-					Buffer: f.Buffer,
-				}
-			}
+			f.DoRedraw(e)
 		case cbr := <-f.CompositeBlockRequests:
-			b := cbr.Block
-			bounds, ok := f.ChildrenBounds[b]
-			if !ok {
-				break
-			}
-			f.PrepareBuffer()
-			draw.Draw(f.Buffer, bounds.Rectangle(), cbr.Buffer, image.Point{0, 0}, draw.Src)
-			if f.Compositor != nil {
-				f.Compositor <- CompositeRequest{
-					Buffer: f.Buffer,
-				}
-			}
-
+			f.DoCompositeBlockRequest(cbr)
 		}
 	}
 }

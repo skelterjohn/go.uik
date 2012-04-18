@@ -34,7 +34,12 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 
 func (wf *WindowFoundation) Show() {
 	wf.W.Show()
-	RedrawEventChan(wf.Redraw).Stack(RedrawEvent{wf.BoundsInParent()})
+	RedrawEventChan(wf.Redraw).Stack(RedrawEvent{
+		Bounds{
+			Coord{0, 0},
+			wf.Size,
+		},
+	})
 }
 
 // wraps mouse events with float64 coordinates

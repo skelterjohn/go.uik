@@ -9,7 +9,7 @@ import (
 type Clicker chan wde.Button
 
 type Button struct {
-	Block
+	Foundation
 	Label *Label
 	pressed bool
 
@@ -24,10 +24,20 @@ type Button struct {
 func NewButton(size Coord, label string) (b *Button) {
 	b = new(Button)
 	b.Initialize()
-	b.Label = NewLabel(size, label)
-
-	b.Min = Coord{0, 0}
 	b.Size = size
+
+	b.Label = NewLabel(size, LabelData{
+		Text: label,
+		FontSize: 12,
+		Color: color.Black,
+	})
+	lbounds := b.Bounds()
+	lbounds.Min.X += 1
+	lbounds.Min.Y += 1
+	lbounds.Max.X -= 1
+	lbounds.Max.Y -= 1
+	b.PlaceBlock(&b.Label.Block, lbounds)
+
 
 	b.click = make(chan wde.Button)
 	b.Click = b.click
@@ -37,7 +47,6 @@ func NewButton(size Coord, label string) (b *Button) {
 	b.RemoveClicker = make(chan Clicker)
 
 	go b.handleEvents()
-	go b.handleState()
 
 	b.Paint = func(gc draw2d.GraphicContext) {
 		b.draw(gc)
@@ -59,7 +68,7 @@ func safeRect(path draw2d.GraphicContext, min, max Coord) {
 }
 
 func (b *Button) draw(gc draw2d.GraphicContext) {
-
+	gc.Clear()
 	gc.SetStrokeColor(color.Black)
 	if b.pressed {
 		gc.SetFillColor(color.RGBA{150, 150, 150, 255})
@@ -68,27 +77,20 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	}
 	safeRect(gc, Coord{0, 0}, b.Size)
 	gc.FillStroke()
-	b.Label.DoPaint(gc)
-}
-
-func (b *Button) handleState() {
-	for {
-		select {
-		case <-b.click:
-			b.Label.TextCh <- "clicked!"
-		}
-	}
 }
 
 func (b *Button) handleEvents() {
 	b.ListenedChannels[b.MouseDownEvents] = true
 	b.ListenedChannels[b.MouseUpEvents] = true
 
+	ld := <-b.Label.GetConfig
+	ld.Text = "pressing!"
+
 	for {
 		select {
 		case <-b.MouseDownEvents:
 			b.pressed = true
-			b.Label.TextCh <- "pressing"
+			b.Label.SetConfig<- ld
 			b.PaintAndComposite()
 		case e := <-b.MouseUpEvents:
 			b.pressed = false
@@ -96,8 +98,11 @@ func (b *Button) handleEvents() {
 			for c := range b.Clickers {
 				c <- e.Which
 			}
-		case <-b.Redraw:
-			b.PaintAndComposite()
+		case cbr := <-b.CompositeBlockRequests:
+			b.DoPaint(b.PrepareBuffer())
+			b.DoCompositeBlockRequest(cbr)
+		case e := <-b.Redraw:
+			b.DoRedraw(e)
 		case c := <-b.AddClicker:
 			clickHead := clickerPipe(c)
 			b.Clickers[c] = clickHead

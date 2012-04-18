@@ -29,8 +29,6 @@ type Block struct {
 	Buffer draw.Image
 	Compositor chan CompositeRequest
 
-	// minimum point relative to the block's parent: only the parent should set this
-	Min Coord
 	// size of block
 	Size Coord
 }
@@ -46,9 +44,16 @@ func (b *Block) Initialize() {
 	go b.handleSplitEvents()
 }
 
+func (b *Block) Bounds() Bounds {
+	return Bounds {
+		Coord{0, 0},
+		b.Size,
+	}
+}
+
 func (b *Block) PrepareBuffer() (gc draw2d.GraphicContext) {
-	min := image.Point{int(b.Min.X-1), int(b.Min.Y-1)}
-	max := image.Point{int(b.Min.X+b.Size.X+1), int(b.Min.Y+b.Size.Y+1)}
+	min := image.Point{0, 0}
+	max := image.Point{int(b.Size.X), int(b.Size.Y)}
 	if b.Buffer == nil || b.Buffer.Bounds().Min != min || b.Buffer.Bounds().Max != max {
 		b.Buffer = image.NewRGBA(image.Rectangle {
 			Min: min,
@@ -68,6 +73,9 @@ func (b *Block) DoPaint(gc draw2d.GraphicContext) {
 func (b *Block) PaintAndComposite() {
 	bgc := b.PrepareBuffer()
 	b.DoPaint(bgc)
+	if b.Compositor == nil {
+		return
+	}
 	b.Compositor <- CompositeRequest{
 		Buffer: b.Buffer,
 	}
@@ -92,10 +100,3 @@ func (b *Block) handleSplitEvents() {
 	}
 }
 
-func (b *Block) BoundsInParent() (bounds Bounds) {
-	bounds.Min = b.Min
-	bounds.Max = b.Min
-	bounds.Max.X += b.Size.X
-	bounds.Max.Y += b.Size.Y
-	return
-}
