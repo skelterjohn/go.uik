@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/draw"
 	"github.com/skelterjohn/go.wde"
+	"github.com/skelterjohn/geom"
 )
 
 // A foundation that wraps a wde.Window
@@ -22,7 +23,7 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 	}
 	wf.Initialize()
 
-	wf.Size = Coord{float64(width), float64(height)}
+	wf.Size = geom.Coord{float64(width), float64(height)}
 	wf.Paint = ClearPaint
 
 	go wf.handleWindowEvents()
@@ -35,8 +36,8 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 func (wf *WindowFoundation) Show() {
 	wf.W.Show()
 	RedrawEventChan(wf.Redraw).Stack(RedrawEvent{
-		Bounds{
-			Coord{0, 0},
+		geom.Rect{
+			geom.Coord{0, 0},
 			wf.Size,
 		},
 	})
@@ -58,14 +59,14 @@ func (wf *WindowFoundation) handleWindowEvents() {
 			wf.MouseDownEvents <- MouseDownEvent{
 				MouseDownEvent: e,
 				MouseLocator: MouseLocator {
-					Loc: Coord{float64(e.Where.X), float64(e.Where.Y)},
+					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		case wde.MouseUpEvent:
 			wf.MouseUpEvents <- MouseUpEvent{
 				MouseUpEvent: e,
 				MouseLocator: MouseLocator {
-					Loc: Coord{float64(e.Where.X), float64(e.Where.Y)},
+					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		}

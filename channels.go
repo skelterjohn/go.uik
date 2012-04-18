@@ -1,9 +1,5 @@
 package uik
 
-import (
-	"math"
-)
-
 // this type stolen from github.com/kylelemons/iq
 type Ring struct {
 	cap int
@@ -106,10 +102,7 @@ func StackRedrawEvents(Redraw chan RedrawEvent) (out <-chan RedrawEvent) {
 				if !ok {
 					break loop
 				}
-				e.Bounds.Min.X = math.Min(e.Bounds.Min.X, ne.Bounds.Min.X)
-				e.Bounds.Min.Y = math.Min(e.Bounds.Min.Y, ne.Bounds.Min.Y)
-				e.Bounds.Max.X = math.Max(e.Bounds.Max.X, ne.Bounds.Max.X)
-				e.Bounds.Max.Y = math.Max(e.Bounds.Max.Y, ne.Bounds.Max.Y)
+				e.Bounds.ExpandToContainRect(ne.Bounds)
 			case outch<- e:
 				valid = false
 			}

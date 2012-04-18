@@ -3,6 +3,7 @@ package uik
 import (
 	"github.com/skelterjohn/go.wde"
 	"code.google.com/p/draw2d/draw2d"
+	"github.com/skelterjohn/geom"
 	"image/color"
 )
 
@@ -21,7 +22,7 @@ type Button struct {
 	RemoveClicker chan Clicker
 }
 
-func NewButton(size Coord, label string) (b *Button) {
+func NewButton(size geom.Coord, label string) (b *Button) {
 	b = new(Button)
 	b.Initialize()
 	b.Size = size
@@ -55,7 +56,7 @@ func NewButton(size Coord, label string) (b *Button) {
 	return
 }
 
-func safeRect(path draw2d.GraphicContext, min, max Coord) {
+func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
 	x1, y1 := min.X, min.Y
 	x2, y2 := max.X, max.Y
 	x, y := path.LastPoint()
@@ -75,7 +76,7 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	} else {
 		gc.SetFillColor(color.White)
 	}
-	safeRect(gc, Coord{0, 0}, b.Size)
+	safeRect(gc, geom.Coord{0, 0}, b.Size)
 	gc.FillStroke()
 }
 

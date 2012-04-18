@@ -2,6 +2,7 @@ package uik
 
 import (
 	"code.google.com/p/draw2d/draw2d"
+	"github.com/skelterjohn/geom"
 	"image"
 	"image/color"
 )
@@ -22,7 +23,7 @@ type Label struct {
 	tbuf image.Image
 }
 
-func NewLabel(size Coord, data LabelData) (l *Label) {
+func NewLabel(size geom.Coord, data LabelData) (l *Label) {
 	l = new(Label)
 	l.Initialize()
 

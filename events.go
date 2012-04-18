@@ -3,22 +3,23 @@ package uik
 import (
 	"image"
 	"github.com/skelterjohn/go.wde"
+	"github.com/skelterjohn/geom"
 	"math"
 )
 
 type MouseEvent interface {
-	Where() Coord
+	Where() geom.Coord
 }
 
 type MouseLocator struct {
-	Loc Coord
+	Loc geom.Coord
 }
 
-func (e *MouseLocator) Where() Coord {
+func (e *MouseLocator) Where() geom.Coord {
 	return e.Loc
 }
 
-func (e *MouseLocator) Translate(offset Coord) {
+func (e *MouseLocator) Translate(offset geom.Coord) {
 	e.Loc.X += offset.X
 	e.Loc.Y += offset.Y
 }
@@ -26,13 +27,13 @@ func (e *MouseLocator) Translate(offset Coord) {
 type MouseMovedEvent struct {
 	wde.MouseMovedEvent
 	MouseLocator
-	From Coord
+	From geom.Coord
 }
 
 type MouseDraggedEvent struct {
 	wde.MouseDraggedEvent
 	MouseLocator
-	From Coord
+	From geom.Coord
 }
 
 type MouseDownEvent struct {
@@ -65,7 +66,7 @@ func (ch RedrawEventChan) Stack(e RedrawEvent) {
 }
 
 type RedrawEvent struct {
-	Bounds Bounds
+	Bounds geom.Rect
 }
 
 type CompositeRequest struct {

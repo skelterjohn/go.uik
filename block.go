@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/draw"
 	"code.google.com/p/draw2d/draw2d"
+	"github.com/skelterjohn/geom"
 )
 
 // The Block type is a basic unit that can receive events and draw itself.
@@ -30,7 +31,7 @@ type Block struct {
 	Compositor chan CompositeRequest
 
 	// size of block
-	Size Coord
+	Size geom.Coord
 }
 
 func (b *Block) Initialize() {
@@ -44,9 +45,9 @@ func (b *Block) Initialize() {
 	go b.handleSplitEvents()
 }
 
-func (b *Block) Bounds() Bounds {
-	return Bounds {
-		Coord{0, 0},
+func (b *Block) Bounds() geom.Rect {
+	return geom.Rect {
+		geom.Coord{0, 0},
 		b.Size,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/draw"
 	"github.com/skelterjohn/go.wde"
+	"github.com/skelterjohn/geom"
 )
 
 type CompositeBlockRequest struct {
@@ -17,7 +18,7 @@ type Foundation struct {
 	Block
 	
 	Children    []*Block
-	ChildrenBounds map[*Block]Bounds
+	ChildrenBounds map[*Block]geom.Rect
 
 	CompositeBlockRequests chan CompositeBlockRequest
 
@@ -28,7 +29,7 @@ type Foundation struct {
 func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
-	f.ChildrenBounds = map[*Block]Bounds{}
+	f.ChildrenBounds = map[*Block]geom.Rect{}
 }
 
 func (f *Foundation) RemoveBlock(b *Block) {
@@ -47,7 +48,7 @@ func (f *Foundation) RemoveBlock(b *Block) {
 	b.Parent = nil
 }
 
-func (f *Foundation) PlaceBlock(b *Block, bounds Bounds) {
+func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 	if b.Parent == nil {
 		f.Children = append(f.Children, b)
 		b.Parent = f
@@ -71,28 +72,28 @@ func (f *Foundation) PlaceBlock(b *Block, bounds Bounds) {
 	})
 }
 
-func (f *Foundation) BlocksForCoord(p Coord) (bs []*Block) {
+func (f *Foundation) BlocksForCoord(p geom.Coord) (bs []*Block) {
 	// quad-tree one day?
 	for _, bl := range f.Children {
 		bbs, ok := f.ChildrenBounds[bl]
 		if !ok {
 			continue
 		}
-		if bbs.Contains(p) {
+		if bbs.ContainsCoord(p) {
 			bs = append(bs, bl)
 		}
 	}
 	return
 }
 
-func (f *Foundation) InvokeOnBlocksUnder(p Coord, foo func(*Block)) {
+func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 	// quad-tree one day?
 	for _, bl := range f.Children {
 		bbs, ok := f.ChildrenBounds[bl]
 		if !ok {
 			continue
 		}
-		if bbs.Contains(p) {
+		if bbs.ContainsCoord(p) {
 			foo(bl)
 			return
 		}
@@ -108,7 +109,7 @@ func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
 		return
 	}
 	f.PrepareBuffer()
-	draw.Draw(f.Buffer, bounds.Rectangle(), cbr.Buffer, image.Point{0, 0}, draw.Over)
+	draw.Draw(f.Buffer, RectangleForRect(bounds), cbr.Buffer, image.Point{0, 0}, draw.Over)
 	if f.Compositor != nil {
 		f.Compositor <- CompositeRequest{
 			Buffer: f.Buffer,

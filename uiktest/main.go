@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/skelterjohn/go.uik"
+	"github.com/skelterjohn/geom"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 	}
 	w.W.SetTitle("GoUI")
 	
-	bsize := uik.Coord{100, 50}
+	bsize := geom.Coord{100, 50}
 	
 	b := uik.NewButton(bsize, "Hi")
 	ld := <-b.Label.GetConfig
@@ -28,9 +29,9 @@ func main() {
 		}
 	}()
 
-	w.PlaceBlock(&b.Block, uik.Bounds{
-		Min: uik.Coord{50, 150},
-		Max: uik.Coord{150, 200},
+	w.PlaceBlock(&b.Block, geom.Rect{
+		Min: geom.Coord{50, 150},
+		Max: geom.Coord{150, 200},
 	})
 	
 	b2 := uik.NewButton(bsize, "there")
@@ -44,9 +45,9 @@ func main() {
 		}
 	}()
 
-	w.PlaceBlock(&b2.Block, uik.Bounds{
-		Min: uik.Coord{150, 150},
-		Max: uik.Coord{250, 200},
+	w.PlaceBlock(&b2.Block, geom.Rect{
+		Min: geom.Coord{150, 150},
+		Max: geom.Coord{250, 200},
 	})
 
 	w.Show()
