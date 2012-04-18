@@ -6,6 +6,8 @@ import (
 	"image/color"
 )
 
+type Clicker chan wde.Button
+
 type Button struct {
 	Block
 	Label *Label
@@ -13,6 +15,10 @@ type Button struct {
 
 	Click chan<- wde.Button
 	click chan wde.Button
+
+	Clickers map[Clicker]chan<- interface{}
+	AddClicker chan Clicker
+	RemoveClicker chan Clicker
 }
 
 func NewButton(size Coord, label string) (b *Button) {
@@ -25,6 +31,10 @@ func NewButton(size Coord, label string) (b *Button) {
 
 	b.click = make(chan wde.Button)
 	b.Click = b.click
+
+	b.Clickers = map[Clicker]chan<- interface{}{}
+	b.AddClicker = make(chan Clicker)
+	b.RemoveClicker = make(chan Clicker)
 
 	go b.handleEvents()
 	go b.handleState()
@@ -82,10 +92,31 @@ func (b *Button) handleEvents() {
 			b.PaintAndComposite()
 		case e := <-b.MouseUpEvents:
 			b.pressed = false
-			b.Click <- e.Which
 			b.PaintAndComposite()
-		case <-b.RedrawOut:
+			for c := range b.Clickers {
+				c <- e.Which
+			}
+		case <-b.Redraw:
 			b.PaintAndComposite()
+		case c := <-b.AddClicker:
+			clickHead := clickerPipe(c)
+			b.Clickers[c] = clickHead
+		case c := <-b.RemoveClicker:
+			if _, ok := b.Clickers[c]; ok {
+				delete(b.Clickers, c)
+			}
 		}
 	}
+}
+
+func clickerPipe(c Clicker) (head chan interface{}) {
+	head = make(chan interface{})
+	tail := make(chan interface{})
+	go RingIQ(head, tail, 0)
+	go func() {
+		for click := range tail {
+			c <- click.(wde.Button)
+		}
+	}()
+	return
 }

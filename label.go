@@ -65,14 +65,14 @@ func (l *Label) handleEvents() {
 		case l.Text = <-l.TextCh:
 			l.tbuf = RenderString(l.Text, DefaultFontData, l.FontSize, color.Black)
 			if l.Parent != nil {
-				l.RedrawIn <- RedrawEvent{l.BoundsInParent()}
+				RedrawEventChan(l.Redraw).Stack(RedrawEvent{l.BoundsInParent()})
 			}
 		case l.FontSize = <-l.FontSizeCh:
 			l.tbuf = RenderString(l.Text, DefaultFontData, l.FontSize, color.Black)
 			if l.Parent != nil {
-				l.RedrawIn <- RedrawEvent{l.BoundsInParent()}
+				RedrawEventChan(l.Redraw).Stack(RedrawEvent{l.BoundsInParent()})
 			}
-		case <-l.RedrawOut:
+		case <-l.Redraw:
 			bgc := l.PrepareBuffer()
 			l.DoPaint(bgc)
 			l.Compositor <- CompositeRequest {

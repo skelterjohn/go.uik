@@ -18,7 +18,19 @@ func main() {
 	bsize := uik.Coord{100, 50}
 	
 	b := uik.NewButton(bsize, "Hi")
-	w.AddBlock(&b.Block)
+	clicker := make(uik.Clicker)
+	b.AddClicker<- clicker
+	go func() {
+		for b := range clicker {
+			fmt.Println("clicked", b)
+		}
+	}()
+
+	w.PlaceBlock(&b.Block, uik.Bounds{
+		Min: uik.Coord{50, 150},
+		Max: uik.Coord{150, 200},
+	})
+
 	w.Show()
 	<-w.Done
 }

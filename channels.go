@@ -6,6 +6,7 @@ import (
 
 // this type stolen from github.com/kylelemons/iq
 type Ring struct {
+	cap int
 	cnt, i int
 	data []interface{}
 }
@@ -19,6 +20,9 @@ func (rb *Ring) Peek() interface{} {
 }
 
 func (rb *Ring) Enqueue(x interface{}) {
+	if rb.cap != 0 && rb.cnt >= rb.cap {
+		return
+	}
 	if rb.cnt >= len(rb.data) {
 		rb.grow(2 * rb.cnt + 1)
 	}
@@ -41,8 +45,9 @@ func (rb *Ring) grow(newSize int) {
 }
 
 // this function stolen from github.com/kylelemons/iq
-func RingIQ(in <-chan interface{}, next chan<- interface{}) {
+func RingIQ(in <-chan interface{}, next chan<- interface{}, cap int) {
 	var rb Ring
+	rb.cap = cap
 	defer func() {
 		for !rb.Empty() {
 			next <- rb.Peek()
@@ -77,7 +82,7 @@ func QueuePipe() (in chan<- interface{}, out <-chan interface{}) {
 	in = inch
 	outch := make(chan interface{})
 	out = outch
-	go RingIQ(inch, outch)
+	go RingIQ(inch, outch, 0)
 	return
 }
 

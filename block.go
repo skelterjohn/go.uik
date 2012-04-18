@@ -19,8 +19,7 @@ type Block struct {
 	CloseEvents     chan CloseEvent
 	MouseDownEvents chan MouseDownEvent
 	MouseUpEvents   chan MouseUpEvent
-	RedrawIn        chan RedrawEvent
-	RedrawOut       <-chan RedrawEvent
+	Redraw        chan RedrawEvent
 
 	allEventsIn     chan<- interface{}
 	allEventsOut    <-chan interface{}
@@ -37,12 +36,12 @@ type Block struct {
 }
 
 func (b *Block) Initialize() {
+	b.Paint = ClearPaint
 	b.ListenedChannels = make(map[interface{}]bool)
 	b.CloseEvents = make(chan CloseEvent)
 	b.MouseDownEvents = make(chan MouseDownEvent)
 	b.MouseUpEvents = make(chan MouseUpEvent)
-	b.RedrawIn = make(chan RedrawEvent)
-	b.RedrawOut = StackRedrawEvents(b.RedrawIn)
+	b.Redraw = make(chan RedrawEvent, 1)
 	b.allEventsIn, b.allEventsOut = QueuePipe()
 	go b.handleSplitEvents()
 }

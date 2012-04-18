@@ -31,15 +31,31 @@ func (f *Foundation) Initialize() {
 	f.ChildrenBounds = map[*Block]Bounds{}
 }
 
-func (f *Foundation) AddBlock(b *Block) {
-	// TODO: place the block somewhere clever
-	// TODO: resize the block in a clever way
-	f.Children = append(f.Children, b)
-	f.ChildrenBounds[b] = Bounds{
-		Min: Coord{50, 50},
-		Max: Coord{150, 100},
+func (f *Foundation) RemoveBlock(b *Block) {
+	if b.Parent != f {
+		// TODO: log
+		return
 	}
-	b.Parent = f
+	close(b.Compositor)
+	b.Compositor = nil
+	if bounds, ok := f.ChildrenBounds[b]; ok {
+		RedrawEventChan(f.Redraw).Stack(RedrawEvent{
+			bounds,
+		})
+	}
+	delete(f.ChildrenBounds, b)
+	b.Parent = nil
+}
+
+func (f *Foundation) PlaceBlock(b *Block, bounds Bounds) {
+	if b.Parent == nil {
+		f.Children = append(f.Children, b)
+		b.Parent = f
+	} else if b.Parent != f {
+		b.Parent.RemoveBlock(b)
+		b.Parent = f
+	}
+	f.ChildrenBounds[b] = bounds
 
 	b.Compositor = make(chan CompositeRequest)
 	go func(b *Block, blockCompositor chan CompositeRequest) {
@@ -50,7 +66,9 @@ func (f *Foundation) AddBlock(b *Block) {
 			}
 		}
 	}(b, b.Compositor)
+	RedrawEventChan(f.Redraw).Stack(RedrawEvent{
 
+	})
 }
 
 func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
@@ -69,7 +87,7 @@ func (f *Foundation) BlockForCoord(p Coord) (b *Block) {
 }
 
 // dispense events to children, as appropriate
-func (f *Foundation) handleEvents() {
+func (f *Foundation) HandleEvents() {
 	f.ListenedChannels[f.CloseEvents] = true
 	f.ListenedChannels[f.MouseDownEvents] = true
 	f.ListenedChannels[f.MouseUpEvents] = true
@@ -110,11 +128,9 @@ func (f *Foundation) handleEvents() {
 				origin.allEventsIn <- oe
 			}
 
-		case e := <-f.RedrawOut:
+		case e := <-f.Redraw:
 			bgc := f.PrepareBuffer()
-			if f.Paint != nil {
-				f.Paint(bgc)
-			}
+			f.DoPaint(bgc)
 			for _, child := range f.Children {
 				translatedDirty := e.Bounds
 				bbs, ok := f.ChildrenBounds[child]
@@ -123,7 +139,12 @@ func (f *Foundation) handleEvents() {
 				translatedDirty.Min.X -= bbs.Min.X
 				translatedDirty.Min.Y -= bbs.Min.Y
 
-				child.RedrawIn <- RedrawEvent{translatedDirty}
+				RedrawEventChan(child.Redraw).Stack(RedrawEvent{translatedDirty})
+			}
+			if f.Compositor != nil {
+				f.Compositor <- CompositeRequest{
+					Buffer: f.Buffer,
+				}
 			}
 		case cbr := <-f.CompositeBlockRequests:
 			b := cbr.Block

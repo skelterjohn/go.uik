@@ -3,7 +3,6 @@ package uik
 import (
 	"image"
 	"image/draw"
-	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/go.wde"
 )
 
@@ -24,20 +23,18 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 	wf.Initialize()
 
 	wf.Size = Coord{float64(width), float64(height)}
-	wf.Paint = func(gc draw2d.GraphicContext) {
-		gc.Clear()
-	}
+	wf.Paint = ClearPaint
 
 	go wf.handleWindowEvents()
 	go wf.handleWindowDrawing()
-	go wf.handleEvents()
+	go wf.HandleEvents()
 
 	return
 }
 
 func (wf *WindowFoundation) Show() {
 	wf.W.Show()
-	wf.RedrawIn <- RedrawEvent{wf.BoundsInParent()}
+	RedrawEventChan(wf.Redraw).Stack(RedrawEvent{wf.BoundsInParent()})
 }
 
 // wraps mouse events with float64 coordinates
