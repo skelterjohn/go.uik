@@ -89,12 +89,14 @@ func (wf *WindowFoundation) handleWindowEvents() {
 			wf.Redraw <- RedrawEvent{
 				wf.Bounds(),
 			}
-			go func() {
-				time.Sleep(FrameDelay)
-				wf.doRepaintWindow <- true
-			}()
+			go wf.SleepRepaint(FrameDelay)
 		}
 	}
+}
+
+func (wf *WindowFoundation) SleepRepaint(delay time.Duration) {
+	time.Sleep(delay)
+	wf.doRepaintWindow <- true
 }
 
 func (wf *WindowFoundation) handleWindowDrawing() {
@@ -104,6 +106,13 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 	waitingForRepaint := false
 	newStuff := false
 
+	flush := func() {
+		wf.W.FlushImage()
+		newStuff = false
+		waitingForRepaint = true
+		go wf.SleepRepaint(FrameDelay)
+	}
+
 	for {
 		select {
 		case ce := <- wf.Compositor:
@@ -111,19 +120,15 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 			if waitingForRepaint {
 				newStuff = true
 			} else {
-				wf.W.FlushImage()
-				newStuff = false
+				flush()
 			}
 		case waitingForRepaint = <-wf.waitForRepaint:
 		case <-wf.doRepaintWindow:
 			waitingForRepaint = false
-			// TODO: don't do this every time - give a window for all expected buffers to 
-			//       come in before flushing prematurely
 			if !newStuff {
 				break
 			}
-			wf.W.FlushImage()
-			newStuff = false
+			flush()
 		}
 	}
 }
