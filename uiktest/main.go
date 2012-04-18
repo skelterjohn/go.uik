@@ -2,71 +2,45 @@ package main
 
 import (
 	"fmt"
-	"github.com/skelterjohn/go.uik"
-	"github.com/skelterjohn/go.uik/widgets"
-	"github.com/skelterjohn/go.uik/layouts"
 	"github.com/skelterjohn/geom"
+	"github.com/skelterjohn/go.uik"
+	"github.com/skelterjohn/go.uik/layouts"
+	"github.com/skelterjohn/go.uik/widgets"
 )
 
-func main() {
-	wbounds := geom.Rect{
-		Max: geom.Coord{480, 320},
-	}
-	w, err := uik.NewWindow(nil, int(wbounds.Max.X), int(wbounds.Max.Y))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	w.W.SetTitle("GoUI")
+// button makes a button, configuring its normal and pressed label
 
-	// Here we create a flow layout, which just lines up its blocks from
-	// left to right.
-	fl := layouts.NewFlow(wbounds.Max)
-	// We add it to the window, taking up the entire space the window has.
-	// At some point we'd need to create a mechanism for blocks and foundations
-	// to resize themselves by sending hints up to their parents.
-	w.PlaceBlock(&fl.Block, wbounds)
-	
-
-	// Create a button with the given size and label
-	b := widgets.NewButton(geom.Coord{100, 50}, "Hi")
-	// Here we get the button's label's data
+func button(bsize geom.Coord, label, plabel string) *widgets.Button {
+	b := widgets.NewButton(bsize, label)
 	ld := <-b.Label.GetConfig
-	// we modify the copy for a special message to display
-	ld.Text = "clicked!"
-
-	// the widget.Buttton has a special channels that sends out wde.Buttons
-	// whenever its clicked. Here we set up something that changes the
-	// label's text every time a click is received.
+	ld.Text = plabel
 	clicker := make(widgets.Clicker)
-	b.AddClicker<- clicker
+	b.AddClicker <- clicker
 	go func() {
 		for _ = range clicker {
-			b.Label.SetConfig<- ld
+			b.Label.SetConfig <- ld
 		}
 	}()
+	return b
+}
 
-	fl.PlaceBlock(&b.Block)
-	
-	b2 := widgets.NewButton(geom.Coord{70, 30}, "there")
-	ld2 := <-b2.Label.GetConfig
-	ld2.Text = "BAM"
-	clicker2 := make(widgets.Clicker)
-	b2.AddClicker<- clicker2
-	go func() {
-		for _ = range clicker2 {
-			b.Label.SetConfig<- ld2
-		}
-	}()
+// topbox makes the top-level window with specified size and label,
+// creating a foundation for others to build on
 
-	fl.PlaceBlock(&b2.Block)
+func topbox(title string, width, height float64) (*uik.WindowFoundation, *layouts.Flow, error) {
+	wbounds := geom.Rect{Max: geom.Coord{width, height}}
+	w, err := uik.NewWindow(nil, int(wbounds.Max.X), int(wbounds.Max.Y))
+	if err != nil {
+		return nil, nil, err
+	}
+	w.W.SetTitle("GoUI")
+	f := layouts.NewFlow(wbounds.Max)
+	w.PlaceBlock(&f.Block, wbounds)
+	return w, f, err
+}
 
-	cb := widgets.NewCheckbox(geom.Coord{50, 50})
-	fl.PlaceBlock(&cb.Block)
-
-	w.Show()
-
-	// Here we set up a subscription on the window's close events.
+// shutdown sets up a subscription on the window's close events.
+func shutdown(w *uik.WindowFoundation) {
 	done := make(chan interface{})
 	isDone := func(e interface{}) (accept, done bool) {
 		_, accept = e.(uik.CloseEvent)
@@ -77,4 +51,22 @@ func main() {
 
 	// once a close event comes in on the subscription, end the program
 	<-done
+}
+
+// create a window with two buttons and a checkbox
+func main() {
+	w, f, err := topbox("GoUI", 480, 320)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	bsize := geom.Coord{100, 50}
+	b1 := button(bsize, "Hi", "clicked!")
+	b2 := button(bsize, "there", "BAM")
+	cb := widgets.NewCheckbox(geom.Coord{50, 50})
+	f.PlaceBlock(&b1.Block)
+	f.PlaceBlock(&b2.Block)
+	f.PlaceBlock(&cb.Block)
+	w.Show()
+	shutdown(w)
 }
