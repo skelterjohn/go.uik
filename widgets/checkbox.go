@@ -1,13 +1,14 @@
-package uik
+package widgets
 
 import (
 	"code.google.com/p/draw2d/draw2d"
 	"image/color"
 	"github.com/skelterjohn/geom"
+	"github.com/skelterjohn/go.uik"
 )
 
 type Checkbox struct {
-	Foundation
+	uik.Foundation
 
 	state bool
 }
@@ -65,7 +66,7 @@ func (c *Checkbox) handleEvents() {
 			} else {
 				c.state = true
 			}
-			c.DoRedraw(RedrawEvent{c.Bounds()})
+			c.DoRedraw(uik.RedrawEvent{c.Bounds()})
 		case e := <-c.Redraw:
 			c.DoRedraw(e)
 		case cbr := <-c.CompositeBlockRequests:

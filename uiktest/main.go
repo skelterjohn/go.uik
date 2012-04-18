@@ -48,6 +48,9 @@ func main() {
 
 	fl.PlaceBlock(&b2.Block)
 
+	cb := widgets.NewCheckbox(geom.Coord{50, 50})
+	fl.PlaceBlock(&cb.Block)
+
 	w.Show()
 
 	done := make(chan interface{})
