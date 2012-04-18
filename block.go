@@ -107,6 +107,7 @@ func (b *Block) PaintAndComposite() {
 
 func (b *Block) handleSplitEvents() {
 	for e := range b.allEventsOut {
+		// get new subscriptions
 		subloop:
 		for {
 			select {
@@ -116,6 +117,7 @@ func (b *Block) handleSplitEvents() {
 				break subloop
 			}
 		}
+
 		for filterp, ch := range b.subscriptions {
 			accept, done := (*filterp)(e)
 			if accept {
