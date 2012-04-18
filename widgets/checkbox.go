@@ -10,7 +10,7 @@ import (
 type Checkbox struct {
 	uik.Foundation
 
-	state bool
+	state, pressed bool
 }
 
 func NewCheckbox(size geom.Coord) (c *Checkbox) {
@@ -30,7 +30,11 @@ func NewCheckbox(size geom.Coord) (c *Checkbox) {
 func (c *Checkbox) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
 	gc.SetStrokeColor(color.Black)
-	gc.SetFillColor(color.RGBA{255,0,0,255})
+	if c.pressed {
+		gc.SetFillColor(color.RGBA{155,0,0,255})
+	} else {
+		gc.SetFillColor(color.RGBA{255,0,0,255})
+	}
 
 	// Draw background rect
 	x, y := gc.LastPoint()
@@ -57,16 +61,19 @@ func (c *Checkbox) draw(gc draw2d.GraphicContext) {
 
 func (c *Checkbox) handleEvents() {
 	c.ListenedChannels[c.MouseDownEvents] = true
+	c.ListenedChannels[c.MouseUpEvents] = true
 
 	for {
 		select {
 		case <-c.MouseDownEvents:
-			if c.state {
-				c.state = false
-			} else {
-				c.state = true
-			}
+			c.pressed = true
 			c.DoRedraw(uik.RedrawEvent{c.Bounds()})
+		case e := <-c.MouseUpEvents:
+			c.pressed = false
+			if c.Bounds().ContainsCoord(e.Where()) {
+				c.state = !c.state
+				c.DoRedraw(uik.RedrawEvent{c.Bounds()})
+			}
 		case e := <-c.Redraw:
 			c.DoRedraw(e)
 		case cbr := <-c.CompositeBlockRequests:
