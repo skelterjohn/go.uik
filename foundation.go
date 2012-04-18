@@ -19,6 +19,7 @@ type Foundation struct {
 	
 	Children    []*Block
 	ChildrenBounds map[*Block]geom.Rect
+	ChildrenLastBuffers map[*Block]image.Image
 
 	CompositeBlockRequests chan CompositeBlockRequest
 
@@ -32,6 +33,7 @@ func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
 	f.ChildrenBounds = map[*Block]geom.Rect{}
+	f.ChildrenLastBuffers = map[*Block]image.Image{}
 	f.DragOriginBlocks = map[wde.Button][]*Block{}
 }
 
@@ -105,14 +107,22 @@ func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 
 }
 
-func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
-	b := cbr.Block
+func (f *Foundation) CompositeBlockBuffer(b *Block, buf image.Image) (composited bool) {
 	bounds, ok := f.ChildrenBounds[b]
 	if !ok {
+		composited = false
 		return
 	}
 	f.PrepareBuffer()
-	draw.Draw(f.Buffer, RectangleForRect(bounds), cbr.Buffer, image.Point{0, 0}, draw.Over)
+	draw.Draw(f.Buffer, RectangleForRect(bounds), buf, image.Point{0, 0}, draw.Over)
+	composited = true
+	return
+}
+
+func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
+	b := cbr.Block
+	f.ChildrenLastBuffers[b] = cbr.Buffer
+	f.CompositeBlockBuffer(b, cbr.Buffer)
 	if f.Compositor != nil {
 		f.Compositor <- CompositeRequest{
 			Buffer: f.Buffer,
@@ -132,6 +142,10 @@ func (f *Foundation) DoRedraw(e RedrawEvent) {
 		translatedDirty.Min.Y -= bbs.Min.Y
 
 		RedrawEventChan(child.Redraw).Stack(RedrawEvent{translatedDirty})
+
+		if buf, ok := f.ChildrenLastBuffers[child]; ok {
+			f.CompositeBlockBuffer(child, buf)
+		}
 	}
 	if f.Compositor != nil {
 		f.Compositor <- CompositeRequest{

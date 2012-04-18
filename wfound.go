@@ -16,7 +16,6 @@ type WindowFoundation struct {
 	W wde.Window
 	waitForRepaint chan bool
 	doRepaintWindow chan bool
-	Done <-chan bool
 }
 
 func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err error) {
@@ -53,25 +52,22 @@ func (wf *WindowFoundation) Show() {
 
 // wraps mouse events with float64 coordinates
 func (wf *WindowFoundation) handleWindowEvents() {
-	done := make(chan bool)
-	wf.Done = done
 	for e := range wf.W.EventChan() {
 		switch e := e.(type) {
 		case wde.CloseEvent:
-			wf.CloseEvents <- CloseEvent{
+			wf.allEventsIn <- CloseEvent{
 				CloseEvent: e,
 			}
 			wf.W.Close()
-			done <- true
 		case wde.MouseDownEvent:
-			wf.MouseDownEvents <- MouseDownEvent{
+			wf.allEventsIn <- MouseDownEvent{
 				MouseDownEvent: e,
 				MouseLocator: MouseLocator {
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		case wde.MouseUpEvent:
-			wf.MouseUpEvents <- MouseUpEvent{
+			wf.allEventsIn <- MouseUpEvent{
 				MouseUpEvent: e,
 				MouseLocator: MouseLocator {
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},

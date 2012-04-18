@@ -22,9 +22,7 @@ func main() {
 	fl := layouts.NewFlow(wbounds.Max)
 	w.PlaceBlock(&fl.Block, wbounds)
 	
-	bsize := geom.Coord{100, 50}
-	
-	b := widgets.NewButton(bsize, "Hi")
+	b := widgets.NewButton(geom.Coord{100, 50}, "Hi")
 	ld := <-b.Label.GetConfig
 	ld.Text = "clicked!"
 	clicker := make(widgets.Clicker)
@@ -37,7 +35,7 @@ func main() {
 
 	fl.PlaceBlock(&b.Block)
 	
-	b2 := widgets.NewButton(bsize, "there")
+	b2 := widgets.NewButton(geom.Coord{70, 30}, "there")
 	ld2 := <-b2.Label.GetConfig
 	ld2.Text = "BAM"
 	clicker2 := make(widgets.Clicker)
@@ -51,5 +49,14 @@ func main() {
 	fl.PlaceBlock(&b2.Block)
 
 	w.Show()
-	<-w.Done
+
+	done := make(chan interface{})
+	isDone := func(e interface{}) (accept, done bool) {
+		_, accept = e.(uik.CloseEvent)
+		done = accept
+		return
+	}
+	w.Block.Subscribe <- uik.EventSubscription{isDone, done}
+
+	<-done
 }

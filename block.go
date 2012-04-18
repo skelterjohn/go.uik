@@ -7,6 +7,13 @@ import (
 	"github.com/skelterjohn/geom"
 )
 
+type EventFilter func(e interface{}) (accept, done bool)
+
+type EventSubscription struct {
+	Filter EventFilter
+	Ch chan<- interface{}
+}
+
 // The Block type is a basic unit that can receive events and draw itself.
 //
 // This struct essentially defines an interface, except a synchronous interface
@@ -19,6 +26,9 @@ type Block struct {
 
 	allEventsIn     chan<- interface{}
 	allEventsOut    <-chan interface{}
+
+	subscriptions map[*EventFilter]chan<- interface{}
+	Subscribe chan EventSubscription
 
 	// the event channels
 
@@ -43,6 +53,9 @@ func (b *Block) Initialize() {
 	b.Paint = ClearPaint
 
 	b.ListenedChannels = make(map[interface{}]bool)
+
+	b.subscriptions = map[*EventFilter]chan<-interface{}{}
+	b.Subscribe = make(chan EventSubscription)
 
 	b.allEventsIn, b.allEventsOut = QueuePipe()
 
@@ -94,6 +107,25 @@ func (b *Block) PaintAndComposite() {
 
 func (b *Block) handleSplitEvents() {
 	for e := range b.allEventsOut {
+		subloop:
+		for {
+			select {
+			case es := <- b.Subscribe:
+				b.subscribeToEvents(es.Filter, es.Ch)
+			default:
+				break subloop
+			}
+		}
+		for filterp, ch := range b.subscriptions {
+			accept, done := (*filterp)(e)
+			if accept {
+				ch <- e
+			}
+			if done {
+				delete(b.subscriptions, filterp)
+			}
+		}
+
 		switch e := e.(type) {
 		case MouseDownEvent:
 			if b.ListenedChannels[b.MouseDownEvents] {
@@ -115,3 +147,9 @@ func (b *Block) handleSplitEvents() {
 	}
 }
 
+func (b *Block) subscribeToEvents(filter EventFilter, ch chan<- interface{}) {
+	inch := make(chan interface{})
+	go RingIQ(inch, ch, 0)
+	b.subscriptions[&filter] = inch
+	return
+}

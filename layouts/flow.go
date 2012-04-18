@@ -22,6 +22,7 @@ func NewFlow(size geom.Coord) (f *Flow) {
 	return
 }
 
+// places the block immediately to the right of the last block placed
 func (f *Flow) PlaceBlock(b *uik.Block) {
 	if b.Parent == nil {
 		f.Children = append(f.Children, b)
