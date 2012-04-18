@@ -4,18 +4,23 @@ import (
 	"fmt"
 	"github.com/skelterjohn/go.uik"
 	"github.com/skelterjohn/go.uik/widgets"
+	"github.com/skelterjohn/go.uik/layouts"
 	"github.com/skelterjohn/geom"
 )
 
 func main() {
-	width := 480.0
-	height := 320.0
-	w, err := uik.NewWindow(nil, int(width), int(height))
+	wbounds := geom.Rect{
+		Max: geom.Coord{480, 320},
+	}
+	w, err := uik.NewWindow(nil, int(wbounds.Max.X), int(wbounds.Max.Y))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	w.W.SetTitle("GoUI")
+
+	fl := layouts.NewFlow(wbounds.Max)
+	w.PlaceBlock(&fl.Block, wbounds)
 	
 	bsize := geom.Coord{100, 50}
 	
@@ -30,10 +35,7 @@ func main() {
 		}
 	}()
 
-	w.PlaceBlock(&b.Block, geom.Rect{
-		Min: geom.Coord{50, 150},
-		Max: geom.Coord{150, 200},
-	})
+	fl.PlaceBlock(&b.Block)
 	
 	b2 := widgets.NewButton(bsize, "there")
 	ld2 := <-b2.Label.GetConfig
@@ -46,10 +48,7 @@ func main() {
 		}
 	}()
 
-	w.PlaceBlock(&b2.Block, geom.Rect{
-		Min: geom.Coord{150, 150},
-		Max: geom.Coord{250, 200},
-	})
+	fl.PlaceBlock(&b2.Block)
 
 	w.Show()
 	<-w.Done
