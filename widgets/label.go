@@ -71,10 +71,12 @@ func (l *Label) handleEvents(setConfig, getConfig chan LabelData) {
 	for {
 		select {
 		case e := <- l.Events:
-			l.HandleEvent(e)
+			switch e := e.(type) {
+			default:
+				l.HandleEvent(e)
+			}
 		case l.data = <-setConfig:
 			l.render()
-			l.PaintAndComposite()
 		case getConfig <- l.data:
 		case <-l.Redraw:
 			l.PaintAndComposite()
