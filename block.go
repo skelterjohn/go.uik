@@ -15,10 +15,10 @@ import (
 type Block struct {
 	Parent *Foundation
 
-	ListenedChannels map[interface{}]bool
-
 	eventsIn  chan<- interface{}
 	Events <-chan interface{}
+
+	Subscribe chan<- Subscription
 
 	Redraw RedrawEventChan
 
@@ -29,7 +29,7 @@ type Block struct {
 	SizeHints SizeHintChan
 	setSizeHint SizeHintChan
 
-	PlacementNotificatins PlacementNotificationChan
+	PlacementNotifications PlacementNotificationChan
 
 	// size of block
 	Size geom.Coord
@@ -38,16 +38,18 @@ type Block struct {
 func (b *Block) Initialize() {
 	b.Paint = ClearPaint
 
-	b.ListenedChannels = make(map[interface{}]bool)
-
-	b.eventsIn, b.Events = QueuePipe()
+	b.eventsIn, b.Events, b.Subscribe = SubscriptionQueue(0)
 
 	b.Redraw = make(RedrawEventChan, 1)
 	
-	b.PlacementNotificatins = make(PlacementNotificationChan, 1)
+	b.PlacementNotifications = make(PlacementNotificationChan, 1)
 	b.setSizeHint = make(SizeHintChan, 1)
 
 	go b.handleSizeHints()
+}
+
+func (b *Block) handleSubscriptions() {
+
 }
 
 func (b *Block) SetSizeHint(sh SizeHint) {
@@ -60,7 +62,7 @@ func (b *Block) handleSizeHints() {
 	for {
 		select {
 		case sh = <- b.setSizeHint:
-		case <- b.PlacementNotificatins:
+		case <- b.PlacementNotifications:
 		}
 		b.SizeHints.Stack(sh)
 	}

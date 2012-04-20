@@ -66,16 +66,15 @@ func main() {
 	w.Show()
 
 	// Here we set up a subscription on the window's close events.
-	// done := make(chan interface{})
-	// isDone := func(e interface{}) (accept, done bool) {
-	// 	_, accept = e.(uik.CloseEvent)
-	// 	done = accept
-	// 	return
-	// }
-	// w.Block.Subscribe <- uik.EventSubscription{isDone, done}
+	done := make(chan interface{})
+	isDone := func(e interface{}) (accept, done bool) {
+		_, accept = e.(uik.CloseEvent)
+		done = accept
+		return
+	}
+	w.Block.Subscribe <- uik.Subscription{isDone, done}
 
 	// once a close event comes in on the subscription, end the program
-	//<-done
+	<-done
 
-	select{}
 }

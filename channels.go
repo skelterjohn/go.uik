@@ -1,5 +1,6 @@
 package uik
 
+
 // this type stolen from github.com/kylelemons/iq
 type Ring struct {
 	cap    int
@@ -137,4 +138,57 @@ func (ch PlacementNotificationChan) Stack(e PlacementNotification) {
 		case <-ch:
 		}
 	}
+}
+
+
+type Filter func(e interface{}) (accept, done bool)
+
+type Subscription struct {
+	Filter Filter
+	Ch chan<- interface{}
+}
+
+func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, sub chan<- Subscription) {
+	inch := make(chan interface{})
+	mch := make(chan interface{})
+	go RingIQ(inch, mch, cap)
+
+	subch := make(chan Subscription, 1)
+	outch := make(chan interface{}, 1)
+
+	go func(mch <-chan interface{}, outch chan<- interface{}, subch <-chan Subscription) {
+		subscriptions := map[*Filter]chan<- interface{}{}
+		for {
+			select {
+			case e := <-mch:
+				ok := true
+				if !ok {
+					close(outch)
+					return
+				}
+				outch <- e
+				for foo, ch := range subscriptions {
+					accept, done := (*foo)(e)
+					if accept {
+						ch <- e
+					}
+					if done {
+						delete(subscriptions, foo)
+					}
+				}
+			case sub := <- subch:
+				subin := make(chan interface{}, 1)
+				go RingIQ(subin, sub.Ch, 10)
+				subscriptions[&sub.Filter] = subin
+			}
+
+		}
+	}(mch, outch, subch)
+
+
+	in = inch
+	out = outch
+	sub = subch
+
+	return
 }
