@@ -52,6 +52,7 @@ func (b *Block) HandleEvent(e interface{}) {
 	switch e := e.(type) {
 	case ResizeEvent:
 		b.Size = e.Size
+		b.PaintAndComposite()
 	}
 }
 

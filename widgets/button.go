@@ -133,6 +133,7 @@ func (b *Button) handleEvents() {
 			sh.MaxSize.X = math.Inf(1)
 			sh.MaxSize.Y = math.Inf(1)
 			b.SetSizeHint(sh)
+
 		}
 	}
 }

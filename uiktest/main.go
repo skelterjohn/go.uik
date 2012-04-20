@@ -82,4 +82,6 @@ func main() {
 	// once a close event comes in on the subscription, end the program
 	<-done
 
+	w.W.Close()
+
 }

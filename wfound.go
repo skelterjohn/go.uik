@@ -60,7 +60,6 @@ func (wf *WindowFoundation) handleWindowEvents() {
 			wf.EventsIn <- CloseEvent{
 				CloseEvent: e,
 			}
-			wf.W.Close()
 		case wde.MouseDownEvent:
 			wf.EventsIn <- MouseDownEvent{
 				MouseDownEvent: e,
