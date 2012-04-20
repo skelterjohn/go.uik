@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
+	"image/color"
 	"github.com/skelterjohn/go.uik/layouts"
 	"github.com/skelterjohn/go.uik/widgets"
 )
@@ -47,6 +48,9 @@ func main() {
 
 	fl.PlaceBlock(&b.Block)
 
+	l := widgets.NewLabel(geom.Coord{100, 50}, widgets.LabelData{"text", 14, color.Black})
+	fl.PlaceBlock(&l.Block)
+
 	b2 := widgets.NewButton(geom.Coord{70, 30}, "there")
 	ld2 := <-b2.Label.GetConfig
 	ld2.Text = "BAM"
@@ -55,6 +59,7 @@ func main() {
 	go func() {
 		for _ = range clicker2 {
 			b.Label.SetConfig <- ld2
+			l.SetConfig <-  widgets.LabelData{"oops", 14, color.Black}
 		}
 	}()
 

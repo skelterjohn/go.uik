@@ -149,7 +149,17 @@ func (f *Foundation) CompositeBlockBuffer(b *Block, buf image.Image) (composited
 func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
 	b := cbr.Block
 	f.ChildrenLastBuffers[b] = cbr.Buffer
-	f.CompositeBlockBuffer(b, cbr.Buffer)
+	f.Rebuffer()
+}
+
+func (f *Foundation) Rebuffer() {
+	bgc := f.PrepareBuffer()
+	f.DoPaint(bgc)
+	for _, child := range f.Children {
+		if buf, ok := f.ChildrenLastBuffers[child]; ok {
+			f.CompositeBlockBuffer(child, buf)
+		}
+	}
 	CompositeRequestChan(f.Compositor).Stack(CompositeRequest{
 		Buffer: f.Buffer,
 	})
@@ -226,7 +236,7 @@ func (f *Foundation) DoResizeEvent(e ResizeEvent) {
 		return
 	}
 	f.Size = e.Size
-	f.Buffer = nil
+	f.Rebuffer()
 }
 
 func (f *Foundation) DoCloseEvent(e CloseEvent) {
