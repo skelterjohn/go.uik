@@ -35,3 +35,29 @@ func (f *Flow) PlaceBlock(b *uik.Block) {
 	f.size.X += b.Size.X
 }
 
+
+// dispense events to children, as appropriate
+func (f *Flow) HandleEvents() {
+	for {
+		select {
+		case e := <-f.Events:
+			f.Foundation.HandleEvent(e)
+		case e := <-f.Redraw:
+			f.DoRedraw(e)
+		case e := <-f.CompositeBlockRequests:
+			f.DoCompositeBlockRequest(e)
+		case bsh := <-f.BlockSizeHints:
+			var bbs geom.Rect
+			var ok bool
+			if bbs, ok = f.ChildrenBounds[bsh.Block]; !ok {
+				break
+			}
+			bbs.Max.X = bbs.Min.X + bsh.SizeHint.PreferredSize.X
+			bbs.Max.Y = bbs.Min.Y + bsh.SizeHint.PreferredSize.Y
+			f.ChildrenBounds[bsh.Block] = bbs
+			bsh.Block.EventsIn <- uik.ResizeEvent {
+				Size: bsh.SizeHint.PreferredSize,
+			}
+		}
+	}
+}

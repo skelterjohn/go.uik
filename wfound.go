@@ -57,19 +57,19 @@ func (wf *WindowFoundation) handleWindowEvents() {
 	for e := range wf.W.EventChan() {
 		switch e := e.(type) {
 		case wde.CloseEvent:
-			wf.eventsIn <- CloseEvent{
+			wf.EventsIn <- CloseEvent{
 				CloseEvent: e,
 			}
 			wf.W.Close()
 		case wde.MouseDownEvent:
-			wf.eventsIn <- MouseDownEvent{
+			wf.EventsIn <- MouseDownEvent{
 				MouseDownEvent: e,
 				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		case wde.MouseUpEvent:
-			wf.eventsIn <- MouseUpEvent{
+			wf.EventsIn <- MouseUpEvent{
 				MouseUpEvent: e,
 				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
@@ -77,7 +77,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 			}
 		case wde.ResizeEvent:
 			wf.waitForRepaint <- true
-			wf.eventsIn <- ResizeEvent{
+			wf.EventsIn <- ResizeEvent{
 				ResizeEvent: e,
 				Size: geom.Coord{
 					X: float64(e.Width),

@@ -88,7 +88,7 @@ func (b *Button) handleEvents() {
 
 	for {
 		select {
-		case e := <- b.Events:
+		case e := <-b.Events:
 			switch e := e.(type) {
 			case uik.MouseDownEvent:
 				b.pressed = true
@@ -100,6 +100,17 @@ func (b *Button) handleEvents() {
 					c <- e.Which
 				}
 				b.DoRedraw(uik.RedrawEvent{b.Bounds()})
+			case uik.ResizeEvent:
+				b.Foundation.HandleEvent(e)
+				lbounds := b.Bounds()
+				lbounds.Min.X += 1
+				lbounds.Min.Y += 1
+				lbounds.Max.X -= 1
+				lbounds.Max.Y -= 1
+				b.ChildrenBounds[&b.Label.Block] = lbounds
+				b.Label.EventsIn <- uik.ResizeEvent{
+					Size: b.Size,
+				}
 			default:
 				b.Foundation.HandleEvent(e)
 			}
@@ -117,6 +128,8 @@ func (b *Button) handleEvents() {
 			}
 		case bsh := <-b.BlockSizeHints:
 			sh := bsh.SizeHint
+			sh.PreferredSize.X += 10
+			sh.PreferredSize.Y += 10
 			sh.MaxSize.X = math.Inf(1)
 			sh.MaxSize.Y = math.Inf(1)
 			b.SetSizeHint(sh)
@@ -127,7 +140,7 @@ func (b *Button) handleEvents() {
 func clickerPipe(c Clicker) (head chan interface{}) {
 	head = make(chan interface{})
 	tail := make(chan interface{})
-	go uik.RingIQ(head, tail, 0)
+	go uik.RingIQ(head, tail, 1)
 	go func() {
 		for click := range tail {
 			c <- click.(wde.Button)

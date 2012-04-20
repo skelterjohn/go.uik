@@ -65,10 +65,9 @@ func (f *Foundation) RemoveBlock(b *Block) {
 func (f *Foundation) AddBlock(b *Block) {
 	if b.Parent == nil {
 		f.Children = append(f.Children, b)
-		b.Parent = f
 	} else if b.Parent != f {
+		// TODO: communication here
 		b.Parent.RemoveBlock(b)
-		b.Parent = f
 	}
 
 	b.Compositor = make(CompositeRequestChan, 1)
@@ -81,7 +80,7 @@ func (f *Foundation) AddBlock(b *Block) {
 		}
 	}(b, b.Compositor)
 
-	b.SizeHints = make(SizeHintChan, 1)
+	sizeHints := make(SizeHintChan, 1)
 	go func(b *Block, sizeHints chan SizeHint) {
 		for sh := range sizeHints {
 			f.BlockSizeHints <- BlockSizeHint{
@@ -89,10 +88,11 @@ func (f *Foundation) AddBlock(b *Block) {
 				Block: b,
 			}
 		}
-	}(b, b.SizeHints)
+	}(b, sizeHints)
 
 	b.PlacementNotifications.Stack(PlacementNotification{
 		Foundation: f,
+		SizeHints: sizeHints,
 	})
 }
 
@@ -190,7 +190,7 @@ func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 		f.DragOriginBlocks[e.Which] = append(f.DragOriginBlocks[e.Which], b)
 		e.Loc.X -= bbs.Min.X
 		e.Loc.Y -= bbs.Min.Y
-		b.eventsIn <- e
+		b.EventsIn <- e
 	})
 }
 
@@ -203,7 +203,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			be := e
 			be.Loc.X -= bbs.Min.X
 			be.Loc.Y -= bbs.Min.Y
-			b.eventsIn <- be
+			b.EventsIn <- be
 		}
 	})
 	if origins, ok := f.DragOriginBlocks[e.Which]; ok {
@@ -215,7 +215,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			obbs := f.ChildrenBounds[origin]
 			oe.Loc.X -= obbs.Min.X
 			oe.Loc.Y -= obbs.Min.Y
-			origin.eventsIn <- oe
+			origin.EventsIn <- oe
 		}
 	}
 	delete(f.DragOriginBlocks, e.Which)
@@ -231,7 +231,7 @@ func (f *Foundation) DoResizeEvent(e ResizeEvent) {
 
 func (f *Foundation) DoCloseEvent(e CloseEvent) {
 	for _, b := range f.Children {
-		b.eventsIn <- e
+		b.EventsIn <- e
 	}
 }
 
@@ -245,6 +245,8 @@ func (f *Foundation) HandleEvent(e interface{}) {
 			f.DoMouseUpEvent(e)
 		case ResizeEvent:
 			f.DoResizeEvent(e)
+		default:
+			f.Block.HandleEvent(e)
 	}
 }
 

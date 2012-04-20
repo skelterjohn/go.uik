@@ -15,7 +15,7 @@ import (
 type Block struct {
 	Parent *Foundation
 
-	eventsIn  chan<- interface{}
+	EventsIn  chan<- interface{}
 	Events <-chan interface{}
 
 	Subscribe chan<- Subscription
@@ -38,7 +38,7 @@ type Block struct {
 func (b *Block) Initialize() {
 	b.Paint = ClearPaint
 
-	b.eventsIn, b.Events, b.Subscribe = SubscriptionQueue(0)
+	b.EventsIn, b.Events, b.Subscribe = SubscriptionQueue(0)
 
 	b.Redraw = make(RedrawEventChan, 1)
 	
@@ -48,8 +48,11 @@ func (b *Block) Initialize() {
 	go b.handleSizeHints()
 }
 
-func (b *Block) handleSubscriptions() {
-
+func (b *Block) HandleEvent(e interface{}) {
+	switch e := e.(type) {
+	case ResizeEvent:
+		b.Size = e.Size
+	}
 }
 
 func (b *Block) SetSizeHint(sh SizeHint) {
@@ -62,7 +65,9 @@ func (b *Block) handleSizeHints() {
 	for {
 		select {
 		case sh = <- b.setSizeHint:
-		case <- b.PlacementNotifications:
+		case pn := <- b.PlacementNotifications:
+			b.Parent = pn.Foundation
+			b.SizeHints = pn.SizeHints
 		}
 		b.SizeHints.Stack(sh)
 	}

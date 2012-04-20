@@ -70,6 +70,8 @@ func (l *Label) draw(gc draw2d.GraphicContext) {
 func (l *Label) handleEvents(setConfig, getConfig chan LabelData) {
 	for {
 		select {
+		case e := <- l.Events:
+			l.HandleEvent(e)
 		case l.data = <-setConfig:
 			l.render()
 			l.PaintAndComposite()

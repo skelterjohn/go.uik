@@ -133,9 +133,9 @@ func (ch PlacementNotificationChan) Stack(e PlacementNotification) {
 	}
 	for {
 		select {
+		case <-ch:
 		case ch <- e:
 			return
-		case <-ch:
 		}
 	}
 }
