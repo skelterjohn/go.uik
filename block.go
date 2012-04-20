@@ -1,18 +1,11 @@
 package uik
 
 import (
-	"image"
-	"image/draw"
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
+	"image"
+	"image/draw"
 )
-
-type EventFilter func(e interface{}) (accept, done bool)
-
-type EventSubscription struct {
-	Filter EventFilter
-	Ch chan<- interface{}
-}
 
 // The Block type is a basic unit that can receive events and draw itself.
 //
@@ -24,26 +17,19 @@ type Block struct {
 
 	ListenedChannels map[interface{}]bool
 
-	allEventsIn     chan<- interface{}
-	allEventsOut    <-chan interface{}
+	eventsIn  chan<- interface{}
+	Events <-chan interface{}
 
-	subscriptions map[*EventFilter]chan<- interface{}
-	Subscribe chan EventSubscription
+	Redraw RedrawEventChan
 
-	// the event channels
+	Paint      func(gc draw2d.GraphicContext)
+	Buffer     draw.Image
 
-	CloseEvents     chan CloseEvent
-	MouseDownEvents chan MouseDownEvent
-	MouseUpEvents   chan MouseUpEvent
-	ResizeEvents    chan ResizeEvent
+	Compositor CompositeRequestChan
+	SizeHints SizeHintChan
+	setSizeHint SizeHintChan
 
-	Redraw        chan RedrawEvent
-
-
-
-	Paint func(gc draw2d.GraphicContext)
-	Buffer draw.Image
-	Compositor chan CompositeRequest
+	PlacementNotificatins PlacementNotificationChan
 
 	// size of block
 	Size geom.Coord
@@ -54,22 +40,34 @@ func (b *Block) Initialize() {
 
 	b.ListenedChannels = make(map[interface{}]bool)
 
-	b.subscriptions = map[*EventFilter]chan<-interface{}{}
-	b.Subscribe = make(chan EventSubscription)
+	b.eventsIn, b.Events = QueuePipe()
 
-	b.allEventsIn, b.allEventsOut = QueuePipe()
+	b.Redraw = make(RedrawEventChan, 1)
+	
+	b.PlacementNotificatins = make(PlacementNotificationChan, 1)
+	b.setSizeHint = make(SizeHintChan, 1)
 
-	b.CloseEvents = make(chan CloseEvent)
-	b.MouseDownEvents = make(chan MouseDownEvent)
-	b.MouseUpEvents = make(chan MouseUpEvent)
-	b.ResizeEvents = make(chan ResizeEvent)
+	go b.handleSizeHints()
+}
 
-	b.Redraw = make(chan RedrawEvent, 1)
-	go b.handleSplitEvents()
+func (b *Block) SetSizeHint(sh SizeHint) {
+	b.setSizeHint <- sh
+}
+
+func (b *Block) handleSizeHints() {
+	sh := <- b.setSizeHint
+	b.SizeHints.Stack(sh)
+	for {
+		select {
+		case sh = <- b.setSizeHint:
+		case <- b.PlacementNotificatins:
+		}
+		b.SizeHints.Stack(sh)
+	}
 }
 
 func (b *Block) Bounds() geom.Rect {
-	return geom.Rect {
+	return geom.Rect{
 		geom.Coord{0, 0},
 		b.Size,
 	}
@@ -79,7 +77,7 @@ func (b *Block) PrepareBuffer() (gc draw2d.GraphicContext) {
 	min := image.Point{0, 0}
 	max := image.Point{int(b.Size.X), int(b.Size.Y)}
 	if b.Buffer == nil || b.Buffer.Bounds().Min != min || b.Buffer.Bounds().Max != max {
-		b.Buffer = image.NewRGBA(image.Rectangle {
+		b.Buffer = image.NewRGBA(image.Rectangle{
 			Min: min,
 			Max: max,
 		})
@@ -100,58 +98,7 @@ func (b *Block) PaintAndComposite() {
 	if b.Compositor == nil {
 		return
 	}
-	b.Compositor <- CompositeRequest{
+	CompositeRequestChan(b.Compositor).Stack(CompositeRequest{
 		Buffer: b.Buffer,
-	}
-}
-
-func (b *Block) handleSplitEvents() {
-	for e := range b.allEventsOut {
-		// get new subscriptions
-		subloop:
-		for {
-			select {
-			case es := <- b.Subscribe:
-				b.subscribeToEvents(es.Filter, es.Ch)
-			default:
-				break subloop
-			}
-		}
-
-		for filterp, ch := range b.subscriptions {
-			accept, done := (*filterp)(e)
-			if accept {
-				ch <- e
-			}
-			if done {
-				delete(b.subscriptions, filterp)
-			}
-		}
-
-		switch e := e.(type) {
-		case MouseDownEvent:
-			if b.ListenedChannels[b.MouseDownEvents] {
-				b.MouseDownEvents <- e
-			}
-		case MouseUpEvent:
-			if b.ListenedChannels[b.MouseUpEvents] {
-				b.MouseUpEvents <- e
-			}
-		case CloseEvent:
-			if b.ListenedChannels[b.CloseEvents] {
-				b.CloseEvents <- e
-			}
-		case ResizeEvent:
-			if b.ListenedChannels[b.ResizeEvents] {
-				b.ResizeEvents <- e
-			}
-		}
-	}
-}
-
-func (b *Block) subscribeToEvents(filter EventFilter, ch chan<- interface{}) {
-	inch := make(chan interface{})
-	go RingIQ(inch, ch, 0)
-	b.subscriptions[&filter] = inch
-	return
+	})
 }

@@ -1,8 +1,8 @@
 package uik
 
 import (
-	"image"
 	"github.com/skelterjohn/geom"
+	"image"
 )
 
 // type Coord struct {

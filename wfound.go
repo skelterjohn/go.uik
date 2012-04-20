@@ -1,20 +1,20 @@
 package uik
 
 import (
+	"github.com/skelterjohn/geom"
+	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
 	"time"
-	"github.com/skelterjohn/go.wde"
-	"github.com/skelterjohn/geom"
 )
 
-const FrameDelay = 16*1e6
+const FrameDelay = 16 * 1e6
 
 // A foundation that wraps a wde.Window
 type WindowFoundation struct {
 	Foundation
-	W wde.Window
-	waitForRepaint chan bool
+	W               wde.Window
+	waitForRepaint  chan bool
 	doRepaintWindow chan bool
 }
 
@@ -32,6 +32,8 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 
 	wf.Size = geom.Coord{float64(width), float64(height)}
 	wf.Paint = ClearPaint
+
+	wf.Compositor = make(chan CompositeRequest)
 
 	go wf.handleWindowEvents()
 	go wf.handleWindowDrawing()
@@ -55,27 +57,27 @@ func (wf *WindowFoundation) handleWindowEvents() {
 	for e := range wf.W.EventChan() {
 		switch e := e.(type) {
 		case wde.CloseEvent:
-			wf.allEventsIn <- CloseEvent{
+			wf.eventsIn <- CloseEvent{
 				CloseEvent: e,
 			}
 			wf.W.Close()
 		case wde.MouseDownEvent:
-			wf.allEventsIn <- MouseDownEvent{
+			wf.eventsIn <- MouseDownEvent{
 				MouseDownEvent: e,
-				MouseLocator: MouseLocator {
+				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		case wde.MouseUpEvent:
-			wf.allEventsIn <- MouseUpEvent{
+			wf.eventsIn <- MouseUpEvent{
 				MouseUpEvent: e,
-				MouseLocator: MouseLocator {
+				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
 			}
 		case wde.ResizeEvent:
 			wf.waitForRepaint <- true
-			wf.ResizeEvents <- ResizeEvent{
+			wf.eventsIn <- ResizeEvent{
 				ResizeEvent: e,
 				Size: geom.Coord{
 					X: float64(e.Width),
@@ -96,8 +98,6 @@ func (wf *WindowFoundation) SleepRepaint(delay time.Duration) {
 }
 
 func (wf *WindowFoundation) handleWindowDrawing() {
-	// TODO: collect a dirty region (possibly disjoint), and draw in one go?
-	wf.Compositor = make(chan CompositeRequest)
 
 	waitingForRepaint := false
 	newStuff := false
@@ -111,7 +111,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 
 	for {
 		select {
-		case ce := <- wf.Compositor:
+		case ce := <-wf.Compositor:
 			draw.Draw(wf.W.Screen(), ce.Buffer.Bounds(), ce.Buffer, image.Point{0, 0}, draw.Src)
 			if waitingForRepaint {
 				newStuff = true

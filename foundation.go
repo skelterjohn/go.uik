@@ -1,10 +1,10 @@
 package uik
 
 import (
+	"github.com/skelterjohn/geom"
+	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
-	"github.com/skelterjohn/go.wde"
-	"github.com/skelterjohn/geom"
 )
 
 type CompositeBlockRequest struct {
@@ -12,26 +12,35 @@ type CompositeBlockRequest struct {
 	Block *Block
 }
 
+type BlockSizeHint struct {
+	SizeHint
+	Block *Block
+}
+
 // The foundation type is for channeling events to children, and passing along
 // draw calls.
 type Foundation struct {
 	Block
-	
-	Children    []*Block
-	ChildrenBounds map[*Block]geom.Rect
+
+	Children            []*Block
+	ChildrenBounds      map[*Block]geom.Rect
 	ChildrenLastBuffers map[*Block]image.Image
 
 	CompositeBlockRequests chan CompositeBlockRequest
 
+	ChildrenHints map[*Block]SizeHint
+	BlockSizeHints chan BlockSizeHint
+
 	DragOriginBlocks map[wde.Button][]*Block
 
 	// this block currently has keyboard priority
-	KeyboardBlock    *Block
+	KeyboardBlock *Block
 }
 
 func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
+	f.BlockSizeHints = make(chan BlockSizeHint)
 	f.ChildrenBounds = map[*Block]geom.Rect{}
 	f.ChildrenLastBuffers = map[*Block]image.Image{}
 	f.DragOriginBlocks = map[wde.Button][]*Block{}
@@ -53,7 +62,7 @@ func (f *Foundation) RemoveBlock(b *Block) {
 	b.Parent = nil
 }
 
-func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
+func (f *Foundation) AddBlock(b *Block) {
 	if b.Parent == nil {
 		f.Children = append(f.Children, b)
 		b.Parent = f
@@ -61,17 +70,35 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 		b.Parent.RemoveBlock(b)
 		b.Parent = f
 	}
-	f.ChildrenBounds[b] = bounds
 
-	b.Compositor = make(chan CompositeRequest)
+	b.Compositor = make(CompositeRequestChan, 1)
 	go func(b *Block, blockCompositor chan CompositeRequest) {
 		for cr := range blockCompositor {
-			f.CompositeBlockRequests <- CompositeBlockRequest {
+			f.CompositeBlockRequests <- CompositeBlockRequest{
 				CompositeRequest: cr,
-				Block: b,
+				Block:            b,
 			}
 		}
 	}(b, b.Compositor)
+
+	b.SizeHints = make(SizeHintChan, 1)
+	go func(b *Block, sizeHints chan SizeHint) {
+		for sh := range sizeHints {
+			f.BlockSizeHints <- BlockSizeHint{
+				SizeHint: sh,
+				Block: b,
+			}
+		}
+	}(b, b.SizeHints)
+
+	b.PlacementNotificatins.Stack(PlacementNotification{
+		Foundation: f,
+	})
+}
+
+func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
+	f.AddBlock(b)
+	f.ChildrenBounds[b] = bounds
 	RedrawEventChan(f.Redraw).Stack(RedrawEvent{
 		bounds,
 	})
@@ -123,11 +150,9 @@ func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
 	b := cbr.Block
 	f.ChildrenLastBuffers[b] = cbr.Buffer
 	f.CompositeBlockBuffer(b, cbr.Buffer)
-	if f.Compositor != nil {
-		f.Compositor <- CompositeRequest{
-			Buffer: f.Buffer,
-		}
-	}
+	CompositeRequestChan(f.Compositor).Stack(CompositeRequest{
+		Buffer: f.Buffer,
+	})
 }
 
 func (f *Foundation) DoRedraw(e RedrawEvent) {
@@ -136,7 +161,9 @@ func (f *Foundation) DoRedraw(e RedrawEvent) {
 	for _, child := range f.Children {
 		translatedDirty := e.Bounds
 		bbs, ok := f.ChildrenBounds[child]
-		if !ok { continue }
+		if !ok {
+			continue
+		}
 
 		translatedDirty.Min.X -= bbs.Min.X
 		translatedDirty.Min.Y -= bbs.Min.Y
@@ -163,7 +190,7 @@ func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 		f.DragOriginBlocks[e.Which] = append(f.DragOriginBlocks[e.Which], b)
 		e.Loc.X -= bbs.Min.X
 		e.Loc.Y -= bbs.Min.Y
-		b.allEventsIn <- e
+		b.eventsIn <- e
 	})
 }
 
@@ -176,7 +203,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			be := e
 			be.Loc.X -= bbs.Min.X
 			be.Loc.Y -= bbs.Min.Y
-			b.allEventsIn <- be
+			b.eventsIn <- be
 		}
 	})
 	if origins, ok := f.DragOriginBlocks[e.Which]; ok {
@@ -188,7 +215,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			obbs := f.ChildrenBounds[origin]
 			oe.Loc.X -= obbs.Min.X
 			oe.Loc.Y -= obbs.Min.Y
-			origin.allEventsIn <- oe
+			origin.eventsIn <- oe
 		}
 	}
 	delete(f.DragOriginBlocks, e.Which)
@@ -202,29 +229,35 @@ func (f *Foundation) DoResizeEvent(e ResizeEvent) {
 	f.Buffer = nil
 }
 
+func (f *Foundation) DoCloseEvent(e CloseEvent) {
+	for _, b := range f.Children {
+		b.eventsIn <- e
+	}
+}
+
+func (f *Foundation) HandleEvent(e interface{}) {
+	switch e := e.(type) {
+		case CloseEvent:
+			f.DoCloseEvent(e)
+		case MouseDownEvent:
+			f.DoMouseDownEvent(e)
+		case MouseUpEvent:
+			f.DoMouseUpEvent(e)
+		case ResizeEvent:
+			f.DoResizeEvent(e)
+	}
+}
+
 // dispense events to children, as appropriate
 func (f *Foundation) HandleEvents() {
-	f.ListenedChannels[f.CloseEvents] = true
-	f.ListenedChannels[f.MouseDownEvents] = true
-	f.ListenedChannels[f.MouseUpEvents] = true
-	// drag and up events for the same button get sent to the origin as well
-
 	for {
 		select {
-		case e := <-f.CloseEvents:
-			for _, b := range f.Children {
-				b.allEventsIn <- e
-			}
-		case e := <-f.MouseDownEvents:
-			f.DoMouseDownEvent(e)
-		case e := <-f.MouseUpEvents:
-			f.DoMouseUpEvent(e)
-		case e := <-f.ResizeEvents:
-			f.DoResizeEvent(e)
+		case e := <-f.Events:
+			f.HandleEvent(e)
 		case e := <-f.Redraw:
 			f.DoRedraw(e)
-		case cbr := <-f.CompositeBlockRequests:
-			f.DoCompositeBlockRequest(cbr)
+		case e := <-f.CompositeBlockRequests:
+			f.DoCompositeBlockRequest(e)
 		}
 	}
 }

@@ -9,15 +9,15 @@ import (
 )
 
 type LabelData struct {
-	Text string
+	Text     string
 	FontSize float64
-	Color color.Color
+	Color    color.Color
 }
 
 type Label struct {
 	uik.Block
 
-	data LabelData
+	data      LabelData
 	SetConfig chan<- LabelData
 	GetConfig <-chan LabelData
 
@@ -50,11 +50,19 @@ func NewLabel(size geom.Coord, data LabelData) (l *Label) {
 func (l *Label) render() {
 	l.tbuf = uik.RenderString(l.data.Text, uik.DefaultFontData, l.data.FontSize, l.data.Color)
 	l.Buffer = nil
+
+	s := geom.Coord{float64(l.tbuf.Bounds().Max.X), float64(l.tbuf.Bounds().Max.Y)}
+
+	l.SetSizeHint(uik.SizeHint{
+		MinSize: s,
+		PreferredSize: s,
+		MaxSize: s,
+	})
 }
 
 func (l *Label) draw(gc draw2d.GraphicContext) {
-	tw := float64(l.tbuf.Bounds().Max.X -  l.tbuf.Bounds().Min.X)
-	th := float64(l.tbuf.Bounds().Max.Y -  l.tbuf.Bounds().Min.Y)
+	tw := float64(l.tbuf.Bounds().Max.X - l.tbuf.Bounds().Min.X)
+	th := float64(l.tbuf.Bounds().Max.Y - l.tbuf.Bounds().Min.Y)
 	gc.Translate((l.Size.X-tw)/2, (l.Size.Y-th)/2)
 	gc.DrawImage(l.tbuf)
 }
@@ -65,7 +73,7 @@ func (l *Label) handleEvents(setConfig, getConfig chan LabelData) {
 		case l.data = <-setConfig:
 			l.render()
 			l.PaintAndComposite()
-		case getConfig<- l.data:
+		case getConfig <- l.data:
 		case <-l.Redraw:
 			l.PaintAndComposite()
 		}

@@ -1,10 +1,11 @@
 package widgets
 
 import (
-	"github.com/skelterjohn/go.uik"
-	"github.com/skelterjohn/go.wde"
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
+	"github.com/skelterjohn/go.uik"
+	"github.com/skelterjohn/go.wde"
+	"math"
 	"image/color"
 )
 
@@ -12,14 +13,14 @@ type Clicker chan wde.Button
 
 type Button struct {
 	uik.Foundation
-	Label *Label
+	Label   *Label
 	pressed bool
 
 	Click chan<- wde.Button
 	click chan wde.Button
 
-	Clickers map[Clicker]chan<- interface{}
-	AddClicker chan Clicker
+	Clickers      map[Clicker]chan<- interface{}
+	AddClicker    chan Clicker
 	RemoveClicker chan Clicker
 }
 
@@ -29,9 +30,9 @@ func NewButton(size geom.Coord, label string) (b *Button) {
 	b.Size = size
 
 	b.Label = NewLabel(size, LabelData{
-		Text: label,
+		Text:     label,
 		FontSize: 12,
-		Color: color.Black,
+		Color:    color.Black,
 	})
 	lbounds := b.Bounds()
 	lbounds.Min.X += 1
@@ -39,7 +40,6 @@ func NewButton(size geom.Coord, label string) (b *Button) {
 	lbounds.Max.X -= 1
 	lbounds.Max.Y -= 1
 	b.PlaceBlock(&b.Label.Block, lbounds)
-
 
 	b.click = make(chan wde.Button)
 	b.Click = b.click
@@ -61,12 +61,12 @@ func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
 	x1, y1 := min.X, min.Y
 	x2, y2 := max.X, max.Y
 	x, y := path.LastPoint()
-    path.MoveTo(x1, y1)
-    path.LineTo(x2, y1)
-    path.LineTo(x2, y2)
-    path.LineTo(x1, y2)
-    path.Close()
-    path.MoveTo(x, y)
+	path.MoveTo(x1, y1)
+	path.LineTo(x2, y1)
+	path.LineTo(x2, y2)
+	path.LineTo(x1, y2)
+	path.Close()
+	path.MoveTo(x, y)
 }
 
 func (b *Button) draw(gc draw2d.GraphicContext) {
@@ -82,29 +82,32 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 }
 
 func (b *Button) handleEvents() {
-	b.ListenedChannels[b.MouseDownEvents] = true
-	b.ListenedChannels[b.MouseUpEvents] = true
 
 	ld := <-b.Label.GetConfig
 	ld.Text = "pressing!"
 
 	for {
 		select {
-		case <-b.MouseDownEvents:
-			b.pressed = true
-			b.Label.SetConfig<- ld
-			b.DoRedraw(uik.RedrawEvent{b.Bounds()})
-		case e := <-b.MouseUpEvents:
-			b.pressed = false
-			for c := range b.Clickers {
-				c <- e.Which
+		case e := <- b.Events:
+			switch e := e.(type) {
+			case uik.MouseDownEvent:
+				b.pressed = true
+				b.Label.SetConfig <- ld
+				b.DoRedraw(uik.RedrawEvent{b.Bounds()})
+			case uik.MouseUpEvent:
+				b.pressed = false
+				for c := range b.Clickers {
+					c <- e.Which
+				}
+				b.DoRedraw(uik.RedrawEvent{b.Bounds()})
+			default:
+				b.Foundation.HandleEvent(e)
 			}
-			b.DoRedraw(uik.RedrawEvent{b.Bounds()})
+		case e := <-b.Redraw:
+			b.DoRedraw(e)
 		case cbr := <-b.CompositeBlockRequests:
 			b.DoPaint(b.PrepareBuffer())
 			b.DoCompositeBlockRequest(cbr)
-		case e := <-b.Redraw:
-			b.DoRedraw(e)
 		case c := <-b.AddClicker:
 			clickHead := clickerPipe(c)
 			b.Clickers[c] = clickHead
@@ -112,6 +115,11 @@ func (b *Button) handleEvents() {
 			if _, ok := b.Clickers[c]; ok {
 				delete(b.Clickers, c)
 			}
+		case bsh := <-b.BlockSizeHints:
+			sh := bsh.SizeHint
+			sh.MaxSize.X = math.Inf(1)
+			sh.MaxSize.Y = math.Inf(1)
+			b.SetSizeHint(sh)
 		}
 	}
 }

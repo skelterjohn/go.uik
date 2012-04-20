@@ -1,9 +1,9 @@
 package uik
 
 import (
-	"github.com/skelterjohn/go.wde/xgb"
-	"github.com/skelterjohn/go.wde"
 	"code.google.com/p/draw2d/draw2d"
+	"github.com/skelterjohn/go.wde"
+	"github.com/skelterjohn/go.wde/xgb"
 )
 
 func ClearPaint(gc draw2d.GraphicContext) {

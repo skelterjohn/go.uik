@@ -2,9 +2,9 @@ package uik
 
 // this type stolen from github.com/kylelemons/iq
 type Ring struct {
-	cap int
+	cap    int
 	cnt, i int
-	data []interface{}
+	data   []interface{}
 }
 
 func (rb *Ring) Empty() bool {
@@ -20,14 +20,14 @@ func (rb *Ring) Enqueue(x interface{}) {
 		return
 	}
 	if rb.cnt >= len(rb.data) {
-		rb.grow(2 * rb.cnt + 1)
+		rb.grow(2*rb.cnt + 1)
 	}
-	rb.data[(rb.i + rb.cnt) % len(rb.data)] = x
+	rb.data[(rb.i+rb.cnt)%len(rb.data)] = x
 	rb.cnt++
 }
 
 func (rb *Ring) Dequeue() {
-	rb.cnt, rb.i = rb.cnt - 1, (rb.i + 1) % len(rb.data)
+	rb.cnt, rb.i = rb.cnt-1, (rb.i+1)%len(rb.data)
 }
 
 func (rb *Ring) grow(newSize int) {
@@ -82,34 +82,59 @@ func QueuePipe() (in chan<- interface{}, out <-chan interface{}) {
 	return
 }
 
-func StackRedrawEvents(Redraw chan RedrawEvent) (out <-chan RedrawEvent) {
-	outch := make(chan RedrawEvent)
-	out = outch
-	go func(Redraw, outch chan RedrawEvent) {
-		var e RedrawEvent
-		valid := false
-
-		loop:
-		for {
-			if !valid {
-				e, valid = <-Redraw
-				if !valid {
-					break
-				}
-			}
-			select {
-			case ne, ok := <-Redraw:
-				if !ok {
-					break loop
-				}
-				e.Bounds.ExpandToContainRect(ne.Bounds)
-			case outch<- e:
-				valid = false
-			}
+type CompositeRequestChan chan CompositeRequest
+func (ch CompositeRequestChan) Stack(cr CompositeRequest) {
+	if ch == nil {
+		return
+	}
+	for {
+		select {
+		case ch <- cr:
+			return
+		case <-ch:
 		}
-		close(outch)
-	}(Redraw, outch)
-
-	return
+	}
 }
 
+type SizeHintChan chan SizeHint
+func (ch SizeHintChan) Stack(sh SizeHint) {
+	if ch == nil {
+		return
+	}
+	for {
+		select {
+		case ch <- sh:
+			return
+		case <-ch:
+		}
+	}
+}
+
+type RedrawEventChan chan RedrawEvent
+func (ch RedrawEventChan) Stack(e RedrawEvent) {
+	if ch == nil {
+		return
+	}
+	for {
+		select {
+		case ch <- e:
+			return
+		case ne := <-ch:
+			e.Bounds.ExpandToContainRect(ne.Bounds)
+		}
+	}
+}
+
+type PlacementNotificationChan chan PlacementNotification
+func (ch PlacementNotificationChan) Stack(e PlacementNotification) {
+	if ch == nil {
+		return
+	}
+	for {
+		select {
+		case ch <- e:
+			return
+		case <-ch:
+		}
+	}
+}
