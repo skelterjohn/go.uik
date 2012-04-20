@@ -237,6 +237,7 @@ func (f *Foundation) DoResizeEvent(e ResizeEvent) {
 	}
 	f.Size = e.Size
 	f.Rebuffer()
+	println("rebuffered")
 }
 
 func (f *Foundation) DoCloseEvent(e CloseEvent) {
