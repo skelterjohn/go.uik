@@ -258,20 +258,20 @@ func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
 		return
 	}
 	if e.Block != f.KeyFocus && f.KeyFocus != nil {
-		f.KeyFocus.EventsIn <- KeyFocusEvent {
+		f.KeyFocus.EventsIn <- KeyFocusEvent{
 			Focus: false,
 		}
 	}
 	f.KeyFocus = e.Block
 	if f.HasKeyFocus {
 		if f.KeyFocus != nil {
-			f.KeyFocus.EventsIn <- KeyFocusEvent {
+			f.KeyFocus.EventsIn <- KeyFocusEvent{
 				Focus: true,
 			}
 		}
 	} else {
 		if f.Parent != nil {
-			f.Parent.EventsIn <- KeyFocusRequest {
+			f.Parent.EventsIn <- KeyFocusRequest{
 				Block: &f.Block,
 			}
 		}

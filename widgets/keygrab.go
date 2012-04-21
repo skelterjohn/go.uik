@@ -2,18 +2,17 @@ package widgets
 
 import (
 	"code.google.com/p/draw2d/draw2d"
-	"github.com/skelterjohn/go.uik"
 	"github.com/skelterjohn/geom"
-	"image/color"
+	"github.com/skelterjohn/go.uik"
 	"image"
+	"image/color"
 )
 
 type KeyGrab struct {
 	uik.Block
 	kbuf image.Image
-	key string
+	key  string
 }
-
 
 func NewKeyGrab(size geom.Coord) (l *KeyGrab) {
 	l = new(KeyGrab)
@@ -23,9 +22,7 @@ func NewKeyGrab(size geom.Coord) (l *KeyGrab) {
 	l.key = "x"
 	l.render()
 
-
 	go l.handleEvents()
-
 
 	l.SetSizeHint(uik.SizeHint{
 		MinSize:       l.Size,

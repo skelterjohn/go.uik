@@ -195,6 +195,7 @@ func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, 
 }
 
 type KeyFocusChan chan *Block
+
 func (ch KeyFocusChan) Stack(b *Block) {
 	if ch == nil {
 		return
