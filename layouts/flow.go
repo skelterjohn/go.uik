@@ -94,7 +94,7 @@ func (f *Flow) HandleEvents() {
 			f.sizeHint.MaxSize.X += bsh.SizeHint.MaxSize.X
 			f.sizeHint.MaxSize.Y += bsh.SizeHint.MaxSize.Y
 
-			f.SizeHints <- f.sizeHint
+			//f.SizeHints <- f.sizeHint
 
 			f.reflow()
 
