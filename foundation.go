@@ -22,7 +22,7 @@ type BlockSizeHint struct {
 type Foundation struct {
 	Block
 
-	Children            []*Block
+	Children            map[*Block]bool
 	ChildrenBounds      map[*Block]geom.Rect
 	ChildrenLastBuffers map[*Block]image.Image
 
@@ -41,6 +41,7 @@ func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
 	f.BlockSizeHints = make(chan BlockSizeHint)
+	f.Children = map[*Block]bool{}
 	f.ChildrenBounds = map[*Block]geom.Rect{}
 	f.ChildrenLastBuffers = map[*Block]image.Image{}
 	f.DragOriginBlocks = map[wde.Button][]*Block{}
@@ -58,13 +59,15 @@ func (f *Foundation) RemoveBlock(b *Block) {
 			bounds,
 		})
 	}
+	delete(f.Children, b)
 	delete(f.ChildrenBounds, b)
+	delete(f.ChildrenLastBuffers, b)
 	b.Parent = nil
 }
 
 func (f *Foundation) AddBlock(b *Block) {
 	if b.Parent == nil {
-		f.Children = append(f.Children, b)
+		f.Children[b] = true
 	} else if b.Parent != f {
 		// TODO: communication here
 		b.Parent.RemoveBlock(b)
@@ -106,7 +109,7 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 
 func (f *Foundation) BlocksForCoord(p geom.Coord) (bs []*Block) {
 	// quad-tree one day?
-	for _, bl := range f.Children {
+	for bl := range f.Children {
 		bbs, ok := f.ChildrenBounds[bl]
 		if !ok {
 			continue
@@ -120,7 +123,7 @@ func (f *Foundation) BlocksForCoord(p geom.Coord) (bs []*Block) {
 
 func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 	// quad-tree one day?
-	for _, bl := range f.Children {
+	for bl := range f.Children {
 		bbs, ok := f.ChildrenBounds[bl]
 		if !ok {
 			continue
@@ -155,7 +158,7 @@ func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
 func (f *Foundation) Rebuffer() {
 	bgc := f.PrepareBuffer()
 	f.DoPaint(bgc)
-	for _, child := range f.Children {
+	for child := range f.Children {
 		if buf, ok := f.ChildrenLastBuffers[child]; ok {
 			f.CompositeBlockBuffer(child, buf)
 		}
@@ -168,7 +171,7 @@ func (f *Foundation) Rebuffer() {
 func (f *Foundation) DoRedraw(e RedrawEvent) {
 	bgc := f.PrepareBuffer()
 	f.DoPaint(bgc)
-	for _, child := range f.Children {
+	for child := range f.Children {
 		translatedDirty := e.Bounds
 		bbs, ok := f.ChildrenBounds[child]
 		if !ok {
@@ -240,7 +243,7 @@ func (f *Foundation) DoResizeEvent(e ResizeEvent) {
 }
 
 func (f *Foundation) DoCloseEvent(e CloseEvent) {
-	for _, b := range f.Children {
+	for b := range f.Children {
 		b.EventsIn <- e
 	}
 }
