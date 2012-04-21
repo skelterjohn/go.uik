@@ -1,7 +1,7 @@
 package layouts
 
 import (
-	"fmt"
+	"math"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
 )
@@ -52,7 +52,40 @@ func (f *Flow) PlaceBlock(b *uik.Block) {
 }
 
 func (f *Flow) reflow() {
-	fmt.Println(f.sizeHint.PreferredSize)
+	children := make([]*uik.Block, f.count)
+	for child, i := range f.childIndices {
+		children[i] = child
+	}
+
+	renderSize := f.Size
+
+	renderSize.X = math.Max(f.sizeHint.MinSize.X, renderSize.X)
+	renderSize.Y = math.Max(f.sizeHint.MinSize.X, renderSize.Y)
+
+	ratioX := 1.0
+	if renderSize.X < f.sizeHint.PreferredSize.X {
+		ratioX = renderSize.X / f.sizeHint.PreferredSize.X
+	}
+
+	var left float64
+	for i:=0; i<f.count; i++ {
+		child := children[i]
+		csh, ok := f.childSizeHints[child]
+		if !ok {
+			continue
+		}
+		cbounds := geom.Rect{geom.Coord{left, 0}, geom.Coord{}}
+		if csh.PreferredSize.Y <= renderSize.Y {
+			cbounds.Max.Y = csh.PreferredSize.Y
+		} else if csh.MinSize.Y <= renderSize.Y {
+			cbounds.Max.Y = renderSize.Y
+		} else {
+			cbounds.Max.Y = csh.MinSize.Y
+		}
+		cbounds.Max.X = left + ratioX * csh.PreferredSize.X
+		f.ChildrenBounds[child] = cbounds
+		left = cbounds.Max.X
+	}
 }
 
 // dispense events to children, as appropriate
@@ -94,7 +127,7 @@ func (f *Flow) HandleEvents() {
 			f.sizeHint.MaxSize.X += bsh.SizeHint.MaxSize.X
 			f.sizeHint.MaxSize.Y += bsh.SizeHint.MaxSize.Y
 
-			//f.SizeHints <- f.sizeHint
+			f.SizeHints.Stack(f.sizeHint)
 
 			f.reflow()
 
