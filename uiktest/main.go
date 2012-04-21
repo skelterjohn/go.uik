@@ -26,7 +26,7 @@ func main() {
 	// We add it to the window, taking up the entire space the window has.
 	// At some point we'd need to create a mechanism for blocks and foundations
 	// to resize themselves by sending hints up to their parents.
-	w.PlaceBlock(&fl.Block, wbounds)
+	w.SetBlock(&fl.Block)
 
 	// Create a button with the given size and label
 	b := widgets.NewButton(geom.Coord{100, 50}, "Hi")
@@ -34,7 +34,6 @@ func main() {
 	ld := <-b.Label.GetConfig
 	// we modify the copy for a special message to display
 	ld.Text = "clicked!"
-
 	// the widget.Buttton has a special channels that sends out wde.Buttons
 	// whenever its clicked. Here we set up something that changes the
 	// label's text every time a click is received.
@@ -46,10 +45,7 @@ func main() {
 		}
 	}()
 
-	fl.PlaceBlock(&b.Block)
-
 	l := widgets.NewLabel(geom.Coord{100, 50}, widgets.LabelData{"text", 14, color.Black})
-	fl.PlaceBlock(&l.Block)
 
 	b2 := widgets.NewButton(geom.Coord{70, 30}, "there")
 	ld2 := <-b2.Label.GetConfig
@@ -59,14 +55,17 @@ func main() {
 	go func() {
 		for _ = range clicker2 {
 			b.Label.SetConfig <- ld2
+			b2.Label.SetConfig <- ld
 			l.SetConfig <-  widgets.LabelData{"oops", 14, color.Black}
 		}
 	}()
 
-	fl.PlaceBlock(&b2.Block)
-
 	cb := widgets.NewCheckbox(geom.Coord{50, 50})
-	fl.PlaceBlock(&cb.Block)
+
+	fl.Add <- &b.Block
+	fl.Add <- &l.Block
+	fl.Add <- &b2.Block
+	fl.Add <- &cb.Block
 
 	w.Show()
 

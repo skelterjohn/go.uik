@@ -12,12 +12,17 @@ type Flow struct {
 
 	size geom.Coord
 	sizeHint uik.SizeHint
+
+	Add chan *uik.Block
+	Remove chan *uik.Block
 }
 
 func NewFlow(size geom.Coord) (f *Flow) {
 	f = new(Flow)
 	f.Initialize()
 	f.Size = size
+	f.Add = make(chan *uik.Block, 10)
+	f.Remove = make(chan *uik.Block, 10)
 
 	go f.HandleEvents()
 
@@ -58,6 +63,9 @@ func (f *Flow) HandleEvents() {
 			bsh.Block.EventsIn <- uik.ResizeEvent {
 				Size: bsh.SizeHint.PreferredSize,
 			}
+		case b := <-f.Add:
+			f.PlaceBlock(b)
+		case <-f.Remove:
 		}
 	}
 }

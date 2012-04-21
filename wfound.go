@@ -42,6 +42,10 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 	return
 }
 
+func (wf *WindowFoundation) SetBlock(b *Block) {
+	wf.PlaceBlock(b, geom.Rect{geom.Coord{}, wf.Size})
+}
+
 func (wf *WindowFoundation) Show() {
 	wf.W.Show()
 	RedrawEventChan(wf.Redraw).Stack(RedrawEvent{
