@@ -7,8 +7,10 @@ import (
 	"image/color"
 )
 
+type Checker chan bool
+
 type Checkbox struct {
-	uik.Foundation
+	uik.Block
 
 	state, pressed bool
 }
@@ -25,9 +27,9 @@ func NewCheckbox(size geom.Coord) (c *Checkbox) {
 	}
 
 	c.SetSizeHint(uik.SizeHint{
-		MinSize: size,
+		MinSize:       size,
 		PreferredSize: size,
-		MaxSize: size,
+		MaxSize:       size,
 	})
 
 	return
@@ -69,20 +71,19 @@ func (c *Checkbox) handleEvents() {
 	for {
 		select {
 		case e := <-c.Events:
-			switch e.(type) {
+			switch e := e.(type) {
 			case uik.MouseDownEvent:
 				c.pressed = true
-				c.DoRedraw(uik.RedrawEvent{c.Bounds()})
+				c.PaintAndComposite()
 			case uik.MouseUpEvent:
 				c.pressed = false
 				c.state = !c.state
-				c.DoRedraw(uik.RedrawEvent{c.Bounds()})
+				c.PaintAndComposite()
+			default:
+				c.Block.HandleEvent(e)
 			}
-		case e := <-c.Redraw:
-			c.DoRedraw(e)
-		case cbr := <-c.CompositeBlockRequests:
-			c.DoPaint(c.PrepareBuffer())
-			c.DoCompositeBlockRequest(cbr)
+		case <-c.Redraw:
+			c.PaintAndComposite()
 		}
 	}
 }

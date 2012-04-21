@@ -5,8 +5,8 @@ import (
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
 	"github.com/skelterjohn/go.wde"
-	"math"
 	"image/color"
+	"math"
 )
 
 type Clicker chan wde.Button
@@ -15,9 +15,6 @@ type Button struct {
 	uik.Foundation
 	Label   *Label
 	pressed bool
-
-	Click chan<- wde.Button
-	click chan wde.Button
 
 	Clickers      map[Clicker]chan<- interface{}
 	AddClicker    chan Clicker
@@ -40,9 +37,6 @@ func NewButton(size geom.Coord, label string) (b *Button) {
 	lbounds.Max.X -= 1
 	lbounds.Max.Y -= 1
 	b.PlaceBlock(&b.Label.Block, lbounds)
-
-	b.click = make(chan wde.Button)
-	b.Click = b.click
 
 	b.Clickers = map[Clicker]chan<- interface{}{}
 	b.AddClicker = make(chan Clicker)

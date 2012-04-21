@@ -68,5 +68,5 @@ type SizeHint struct {
 
 type PlacementNotification struct {
 	Foundation *Foundation
-	SizeHints SizeHintChan
+	SizeHints  SizeHintChan
 }

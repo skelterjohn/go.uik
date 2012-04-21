@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
-	"image/color"
 	"github.com/skelterjohn/go.uik/layouts"
 	"github.com/skelterjohn/go.uik/widgets"
+	"image/color"
 )
 
 func main() {
@@ -56,16 +56,19 @@ func main() {
 		for _ = range clicker2 {
 			b.Label.SetConfig <- ld2
 			b2.Label.SetConfig <- ld
-			l.SetConfig <-  widgets.LabelData{"oops", 14, color.Black}
+			l.SetConfig <- widgets.LabelData{"oops", 14, color.Black}
 		}
 	}()
 
 	cb := widgets.NewCheckbox(geom.Coord{50, 50})
 
+	kg := widgets.NewKeyGrab(geom.Coord{50, 50})
+
 	fl.Add <- &b.Block
 	fl.Add <- &l.Block
 	fl.Add <- &b2.Block
 	fl.Add <- &cb.Block
+	fl.Add <- &kg.Block
 
 	w.Show()
 

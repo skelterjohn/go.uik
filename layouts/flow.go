@@ -1,23 +1,23 @@
 package layouts
 
 import (
-	"math"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
+	"math"
 )
 
 type Flow struct {
 	uik.Foundation
 
 	childSizeHints map[*uik.Block]uik.SizeHint
-	childIndices map[*uik.Block]int
+	childIndices   map[*uik.Block]int
 
 	count int
 
-	size geom.Coord
+	size     geom.Coord
 	sizeHint uik.SizeHint
 
-	Add chan *uik.Block
+	Add    chan *uik.Block
 	Remove chan *uik.Block
 }
 
@@ -68,7 +68,7 @@ func (f *Flow) reflow() {
 	}
 
 	var left float64
-	for i:=0; i<f.count; i++ {
+	for i := 0; i < f.count; i++ {
 		child := children[i]
 		csh, ok := f.childSizeHints[child]
 		if !ok {
@@ -82,7 +82,7 @@ func (f *Flow) reflow() {
 		} else {
 			cbounds.Max.Y = csh.MinSize.Y
 		}
-		cbounds.Max.X = left + ratioX * csh.PreferredSize.X
+		cbounds.Max.X = left + ratioX*csh.PreferredSize.X
 		f.ChildrenBounds[child] = cbounds
 		left = cbounds.Max.X
 	}
@@ -131,7 +131,6 @@ func (f *Flow) HandleEvents() {
 
 			f.reflow()
 
-
 			var bbs geom.Rect
 			var ok bool
 			if bbs, ok = f.ChildrenBounds[bsh.Block]; !ok {
@@ -143,7 +142,7 @@ func (f *Flow) HandleEvents() {
 
 			f.ChildrenBounds[bsh.Block] = bbs
 
-			bsh.Block.EventsIn <- uik.ResizeEvent {
+			bsh.Block.EventsIn <- uik.ResizeEvent{
 				Size: bsh.SizeHint.PreferredSize,
 			}
 
@@ -162,7 +161,7 @@ func (f *Flow) HandleEvents() {
 			// decrement all following blocks
 			for ob, j := range f.childIndices {
 				if j > i {
-					f.childIndices[ob] = j-1
+					f.childIndices[ob] = j - 1
 				}
 			}
 			delete(f.childIndices, b)

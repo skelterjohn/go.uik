@@ -1,6 +1,5 @@
 package uik
 
-
 // this type stolen from github.com/kylelemons/iq
 type Ring struct {
 	cap    int
@@ -84,6 +83,7 @@ func QueuePipe() (in chan<- interface{}, out <-chan interface{}) {
 }
 
 type CompositeRequestChan chan CompositeRequest
+
 func (ch CompositeRequestChan) Stack(cr CompositeRequest) {
 	if ch == nil {
 		return
@@ -98,6 +98,7 @@ func (ch CompositeRequestChan) Stack(cr CompositeRequest) {
 }
 
 type SizeHintChan chan SizeHint
+
 func (ch SizeHintChan) Stack(sh SizeHint) {
 	if ch == nil {
 		return
@@ -112,6 +113,7 @@ func (ch SizeHintChan) Stack(sh SizeHint) {
 }
 
 type RedrawEventChan chan RedrawEvent
+
 func (ch RedrawEventChan) Stack(e RedrawEvent) {
 	if ch == nil {
 		return
@@ -127,6 +129,7 @@ func (ch RedrawEventChan) Stack(e RedrawEvent) {
 }
 
 type PlacementNotificationChan chan PlacementNotification
+
 func (ch PlacementNotificationChan) Stack(e PlacementNotification) {
 	if ch == nil {
 		return
@@ -140,12 +143,11 @@ func (ch PlacementNotificationChan) Stack(e PlacementNotification) {
 	}
 }
 
-
 type Filter func(e interface{}) (accept, done bool)
 
 type Subscription struct {
 	Filter Filter
-	Ch chan<- interface{}
+	Ch     chan<- interface{}
 }
 
 func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, sub chan<- Subscription) {
@@ -176,7 +178,7 @@ func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, 
 						delete(subscriptions, foo)
 					}
 				}
-			case sub := <- subch:
+			case sub := <-subch:
 				subin := make(chan interface{}, 1)
 				go RingIQ(subin, sub.Ch, 10)
 				subscriptions[&sub.Filter] = subin
@@ -185,10 +187,23 @@ func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, 
 		}
 	}(mch, outch, subch)
 
-
 	in = inch
 	out = outch
 	sub = subch
 
 	return
+}
+
+type KeyFocusChan chan *Block
+func (ch KeyFocusChan) Stack(b *Block) {
+	if ch == nil {
+		return
+	}
+	for {
+		select {
+		case <-ch:
+		case ch <- b:
+			return
+		}
+	}
 }

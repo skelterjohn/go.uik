@@ -28,19 +28,21 @@ type Foundation struct {
 
 	CompositeBlockRequests chan CompositeBlockRequest
 
-	ChildrenHints map[*Block]SizeHint
+	ChildrenHints  map[*Block]SizeHint
 	BlockSizeHints chan BlockSizeHint
 
 	DragOriginBlocks map[wde.Button][]*Block
 
 	// this block currently has keyboard priority
 	KeyboardBlock *Block
+	KeyFocusRequests KeyFocusChan
 }
 
 func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
 	f.BlockSizeHints = make(chan BlockSizeHint)
+	f.KeyFocusRequests = make(KeyFocusChan, 1)
 	f.Children = map[*Block]bool{}
 	f.ChildrenBounds = map[*Block]geom.Rect{}
 	f.ChildrenLastBuffers = map[*Block]image.Image{}
@@ -88,14 +90,14 @@ func (f *Foundation) AddBlock(b *Block) {
 		for sh := range sizeHints {
 			f.BlockSizeHints <- BlockSizeHint{
 				SizeHint: sh,
-				Block: b,
+				Block:    b,
 			}
 		}
 	}(b, sizeHints)
 
 	b.PlacementNotifications.Stack(PlacementNotification{
 		Foundation: f,
-		SizeHints: sizeHints,
+		SizeHints:  sizeHints,
 	})
 }
 
@@ -250,16 +252,16 @@ func (f *Foundation) DoCloseEvent(e CloseEvent) {
 
 func (f *Foundation) HandleEvent(e interface{}) {
 	switch e := e.(type) {
-		case CloseEvent:
-			f.DoCloseEvent(e)
-		case MouseDownEvent:
-			f.DoMouseDownEvent(e)
-		case MouseUpEvent:
-			f.DoMouseUpEvent(e)
-		case ResizeEvent:
-			f.DoResizeEvent(e)
-		default:
-			f.Block.HandleEvent(e)
+	case CloseEvent:
+		f.DoCloseEvent(e)
+	case MouseDownEvent:
+		f.DoMouseDownEvent(e)
+	case MouseUpEvent:
+		f.DoMouseUpEvent(e)
+	case ResizeEvent:
+		f.DoResizeEvent(e)
+	default:
+		f.Block.HandleEvent(e)
 	}
 }
 

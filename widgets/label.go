@@ -54,9 +54,9 @@ func (l *Label) render() {
 	s := geom.Coord{float64(l.tbuf.Bounds().Max.X), float64(l.tbuf.Bounds().Max.Y)}
 
 	l.SetSizeHint(uik.SizeHint{
-		MinSize: s,
+		MinSize:       s,
 		PreferredSize: s,
-		MaxSize: s,
+		MaxSize:       s,
 	})
 }
 
@@ -70,7 +70,7 @@ func (l *Label) draw(gc draw2d.GraphicContext) {
 func (l *Label) handleEvents(setConfig, getConfig chan LabelData) {
 	for {
 		select {
-		case e := <- l.Events:
+		case e := <-l.Events:
 			switch e := e.(type) {
 			default:
 				l.HandleEvent(e)
