@@ -31,6 +31,8 @@ type Block struct {
 
 	PlacementNotifications PlacementNotificationChan
 
+	HasKeyFocus bool
+
 	// size of block
 	Size geom.Coord
 }
@@ -53,6 +55,8 @@ func (b *Block) HandleEvent(e interface{}) {
 	case ResizeEvent:
 		b.Size = e.Size
 		b.PaintAndComposite()
+	case KeyFocusEvent:
+		b.HasKeyFocus = e.Focus
 	}
 }
 

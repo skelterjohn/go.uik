@@ -63,12 +63,14 @@ func main() {
 	cb := widgets.NewCheckbox(geom.Coord{50, 50})
 
 	kg := widgets.NewKeyGrab(geom.Coord{50, 50})
+	kg2 := widgets.NewKeyGrab(geom.Coord{50, 50})
 
 	fl.Add <- &b.Block
 	fl.Add <- &l.Block
+	fl.Add <- &kg.Block
 	fl.Add <- &b2.Block
 	fl.Add <- &cb.Block
-	fl.Add <- &kg.Block
+	fl.Add <- &kg2.Block
 
 	w.Show()
 

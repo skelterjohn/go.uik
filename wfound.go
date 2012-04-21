@@ -34,6 +34,7 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 	wf.Paint = ClearPaint
 
 	wf.Compositor = make(chan CompositeRequest)
+	wf.HasKeyFocus = true
 
 	go wf.handleWindowEvents()
 	go wf.handleWindowDrawing()
@@ -77,6 +78,18 @@ func (wf *WindowFoundation) handleWindowEvents() {
 				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
+			}
+		case wde.KeyDownEvent:
+			wf.EventsIn <- KeyDownEvent{
+				KeyDownEvent: e,
+			}
+		case wde.KeyUpEvent:
+			wf.EventsIn <- KeyUpEvent{
+				KeyUpEvent: e,
+			}
+		case wde.KeyTypedEvent:
+			wf.EventsIn <- KeyTypedEvent{
+				KeyTypedEvent: e,
 			}
 		case wde.ResizeEvent:
 			wf.waitForRepaint <- true

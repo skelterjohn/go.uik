@@ -70,3 +70,23 @@ type PlacementNotification struct {
 	Foundation *Foundation
 	SizeHints  SizeHintChan
 }
+
+type KeyFocusRequest struct {
+	Block *Block
+}
+
+type KeyFocusEvent struct {
+	Focus bool
+}
+
+type KeyDownEvent struct {
+	wde.KeyDownEvent
+}
+
+type KeyUpEvent struct {
+	wde.KeyUpEvent
+}
+
+type KeyTypedEvent struct {
+	wde.KeyTypedEvent
+}

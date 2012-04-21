@@ -34,15 +34,13 @@ type Foundation struct {
 	DragOriginBlocks map[wde.Button][]*Block
 
 	// this block currently has keyboard priority
-	KeyboardBlock *Block
-	KeyFocusRequests KeyFocusChan
+	KeyFocus *Block
 }
 
 func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
 	f.BlockSizeHints = make(chan BlockSizeHint)
-	f.KeyFocusRequests = make(KeyFocusChan, 1)
 	f.Children = map[*Block]bool{}
 	f.ChildrenBounds = map[*Block]geom.Rect{}
 	f.ChildrenLastBuffers = map[*Block]image.Image{}
@@ -74,6 +72,8 @@ func (f *Foundation) AddBlock(b *Block) {
 		// TODO: communication here
 		b.Parent.RemoveBlock(b)
 	}
+
+	b.Parent = f
 
 	b.Compositor = make(CompositeRequestChan, 1)
 	go func(b *Block, blockCompositor chan CompositeRequest) {
@@ -250,6 +250,51 @@ func (f *Foundation) DoCloseEvent(e CloseEvent) {
 	}
 }
 
+func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
+	if e.Block == nil {
+		return
+	}
+	if !f.Children[e.Block] {
+		return
+	}
+	if e.Block != f.KeyFocus && f.KeyFocus != nil {
+		f.KeyFocus.EventsIn <- KeyFocusEvent {
+			Focus: false,
+		}
+	}
+	f.KeyFocus = e.Block
+	if f.HasKeyFocus {
+		if f.KeyFocus != nil {
+			f.KeyFocus.EventsIn <- KeyFocusEvent {
+				Focus: true,
+			}
+		}
+	} else {
+		if f.Parent != nil {
+			f.Parent.EventsIn <- KeyFocusRequest {
+				Block: &f.Block,
+			}
+		}
+	}
+}
+
+func (f *Foundation) DoKeyFocusEvent(e KeyFocusEvent) {
+	if e.Focus == f.HasKeyFocus {
+		return
+	}
+	f.HasKeyFocus = e.Focus
+	if f.KeyFocus != nil {
+		f.KeyFocus.EventsIn <- e
+	}
+}
+
+func (f *Foundation) DoKeyEvent(e interface{}) {
+	if f.KeyFocus == nil {
+		return
+	}
+	f.KeyFocus.EventsIn <- e
+}
+
 func (f *Foundation) HandleEvent(e interface{}) {
 	switch e := e.(type) {
 	case CloseEvent:
@@ -260,6 +305,12 @@ func (f *Foundation) HandleEvent(e interface{}) {
 		f.DoMouseUpEvent(e)
 	case ResizeEvent:
 		f.DoResizeEvent(e)
+	case KeyFocusEvent:
+		f.DoKeyFocusEvent(e)
+	case KeyFocusRequest:
+		f.KeyFocusRequest(e)
+	case KeyDownEvent, KeyUpEvent, KeyTypedEvent:
+		f.DoKeyEvent(e)
 	default:
 		f.Block.HandleEvent(e)
 	}
