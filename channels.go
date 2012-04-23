@@ -128,9 +128,9 @@ func (ch RedrawEventChan) Stack(e RedrawEvent) {
 	}
 }
 
-type PlacementNotificationChan chan PlacementNotification
+type placementNotificationChan chan placementNotification
 
-func (ch PlacementNotificationChan) Stack(e PlacementNotification) {
+func (ch placementNotificationChan) Stack(e placementNotification) {
 	if ch == nil {
 		return
 	}

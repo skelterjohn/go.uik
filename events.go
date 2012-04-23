@@ -66,7 +66,7 @@ type SizeHint struct {
 	MinSize, PreferredSize, MaxSize geom.Coord
 }
 
-type PlacementNotification struct {
+type placementNotification struct {
 	Foundation *Foundation
 	SizeHints  SizeHintChan
 }

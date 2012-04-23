@@ -95,7 +95,7 @@ func (f *Foundation) AddBlock(b *Block) {
 		}
 	}(b, sizeHints)
 
-	b.PlacementNotifications.Stack(PlacementNotification{
+	b.placementNotifications.Stack(placementNotification{
 		Foundation: f,
 		SizeHints:  sizeHints,
 	})

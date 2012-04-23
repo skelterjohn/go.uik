@@ -29,7 +29,7 @@ type Block struct {
 	SizeHints   SizeHintChan
 	setSizeHint SizeHintChan
 
-	PlacementNotifications PlacementNotificationChan
+	placementNotifications placementNotificationChan
 
 	HasKeyFocus bool
 
@@ -44,7 +44,7 @@ func (b *Block) Initialize() {
 
 	b.Redraw = make(RedrawEventChan, 1)
 
-	b.PlacementNotifications = make(PlacementNotificationChan, 1)
+	b.placementNotifications = make(placementNotificationChan, 1)
 	b.setSizeHint = make(SizeHintChan, 1)
 
 	go b.handleSizeHints()
@@ -70,7 +70,7 @@ func (b *Block) handleSizeHints() {
 	for {
 		select {
 		case sh = <-b.setSizeHint:
-		case pn := <-b.PlacementNotifications:
+		case pn := <-b.placementNotifications:
 			b.Parent = pn.Foundation
 			b.SizeHints = pn.SizeHints
 		}
