@@ -1,10 +1,10 @@
 package layouts
 
 import (
-	"image/color"
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
+	"image/color"
 	"math"
 )
 
@@ -16,13 +16,12 @@ const (
 )
 
 type BlockData struct {
-	Block *uik.Block
-	GridX, GridY     int
-	ExtraX, ExtraY     int
+	Block          *uik.Block
+	GridX, GridY   int
+	ExtraX, ExtraY int
 }
 
 type GridConfig struct {
-
 }
 
 type table struct {
@@ -57,17 +56,17 @@ func (t *table) set(x, y int, bd BlockData) {
 type Grid struct {
 	uik.Foundation
 
-	children map[*uik.Block]bool
+	children          map[*uik.Block]bool
 	childrenSizeHints map[*uik.Block]uik.SizeHint
 	childrenBlockData map[*uik.Block]BlockData
-	config GridConfig
+	config            GridConfig
 
 	table table
 
-	Add chan<- BlockData
-	add chan BlockData
-	Remove chan<- *uik.Block
-	remove chan *uik.Block
+	Add       chan<- BlockData
+	add       chan BlockData
+	Remove    chan<- *uik.Block
+	remove    chan *uik.Block
 	SetConfig chan<- GridConfig
 	setConfig chan GridConfig
 	GetConfig <-chan GridConfig
@@ -116,15 +115,15 @@ func (g *Grid) remBlock(b *uik.Block) {
 	g.regrid()
 }
 
-func (g *Grid) regrid() {
+func (g *Grid) makePreferences() {
 	var sizeHint uik.SizeHint
 
 	maxX, maxY := 0, 0
 	for _, bd := range g.childrenBlockData {
-		if bd.GridX + bd.ExtraX > maxX {
+		if bd.GridX+bd.ExtraX > maxX {
 			maxX = bd.GridX + bd.ExtraX
 		}
-		if bd.GridY + bd.ExtraY > maxY {
+		if bd.GridY+bd.ExtraY > maxY {
 			maxY = bd.GridY + bd.ExtraY
 		}
 	}
@@ -167,7 +166,7 @@ func (g *Grid) regrid() {
 		}
 		bounds := geom.Rect{
 			geom.Coord{minX, minY},
-			geom.Coord{minX+widths[bd.GridX], minY+heights[bd.GridY]},
+			geom.Coord{minX + widths[bd.GridX], minY + heights[bd.GridY]},
 		}
 
 		if bounds.Max.X > sizeHint.PreferredSize.X {
@@ -176,16 +175,71 @@ func (g *Grid) regrid() {
 		if bounds.Max.Y > sizeHint.PreferredSize.Y {
 			sizeHint.PreferredSize.Y = bounds.Max.Y
 		}
+	}
+
+	sizeHint.MinSize = sizeHint.PreferredSize
+	sizeHint.MaxSize = sizeHint.PreferredSize
+	g.SetSizeHint(sizeHint)
+}
+
+func (g *Grid) regrid() {
+
+	maxX, maxY := 0, 0
+	for _, bd := range g.childrenBlockData {
+		if bd.GridX+bd.ExtraX > maxX {
+			maxX = bd.GridX + bd.ExtraX
+		}
+		if bd.GridY+bd.ExtraY > maxY {
+			maxY = bd.GridY + bd.ExtraY
+		}
+	}
+
+	widths := make([]float64, maxX+1)
+	heights := make([]float64, maxY+1)
+
+	for _, bd := range g.childrenBlockData {
+		sh, ok := g.childrenSizeHints[bd.Block]
+		if !ok {
+			continue
+		}
+		widths[bd.GridX] = math.Max(widths[bd.GridX], sh.PreferredSize.X)
+		heights[bd.GridY] = math.Max(heights[bd.GridY], sh.PreferredSize.Y)
+	}
+
+	minXs := make([]float64, maxX)
+	for i, w := range widths[:len(widths)-1] {
+		if i != 0 {
+			minXs[i] += minXs[i-1]
+		}
+		minXs[i] += w
+	}
+	minYs := make([]float64, maxY)
+	for i, h := range heights[:len(heights)-1] {
+		if i != 0 {
+			minYs[i] += minYs[i-1]
+		}
+		minYs[i] += h
+	}
+
+	for _, bd := range g.childrenBlockData {
+		minX := 0.0
+		if bd.GridX != 0 {
+			minX = minXs[bd.GridX-1]
+		}
+		minY := 0.0
+		if bd.GridY != 0 {
+			minY = minYs[bd.GridY-1]
+		}
+		bounds := geom.Rect{
+			geom.Coord{minX, minY},
+			geom.Coord{minX + widths[bd.GridX], minY + heights[bd.GridY]},
+		}
 
 		g.ChildrenBounds[bd.Block] = bounds
 		bd.Block.EventsIn <- uik.ResizeEvent{
 			Size: geom.Coord{widths[bd.GridX], heights[bd.GridY]},
 		}
 	}
-
-	sizeHint.MinSize = sizeHint.PreferredSize
-	sizeHint.MaxSize = sizeHint.PreferredSize
-	g.SetSizeHint(sizeHint)
 }
 
 func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
@@ -210,12 +264,9 @@ func (g *Grid) draw(gc draw2d.GraphicContext) {
 func (g *Grid) handleEvents() {
 	for {
 		select {
-		case e := <- g.Events:
+		case e := <-g.Events:
 			switch e := e.(type) {
 			case uik.ResizeEvent:
-				if g.Size == e.Size {
-					break
-				}
 				g.Size = e.Size
 				g.regrid()
 				g.PaintAndComposite()
@@ -231,13 +282,13 @@ func (g *Grid) handleEvents() {
 
 			g.childrenSizeHints[bsh.Block] = bsh.SizeHint
 
-			g.regrid()
+			g.makePreferences()
 		case e := <-g.Redraw:
 			g.DoRedraw(e)
 		case e := <-g.CompositeBlockRequests:
 			g.DoCompositeBlockRequest(e)
-		case g.config = <- g.setConfig:
-			g.regrid()
+		case g.config = <-g.setConfig:
+			g.makePreferences()
 		case g.getConfig <- g.config:
 		case bd := <-g.add:
 			g.addBlock(bd)

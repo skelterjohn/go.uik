@@ -162,11 +162,10 @@ func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
 
 func (f *Foundation) Rebuffer() {
 	bgc := f.PrepareBuffer()
+	bgc.Clear()
 	f.DoPaint(bgc)
-	for child := range f.Children {
-		if buf, ok := f.ChildrenLastBuffers[child]; ok {
-			f.CompositeBlockBuffer(child, buf)
-		}
+	for child, buf := range f.ChildrenLastBuffers {
+		f.CompositeBlockBuffer(child, buf)
 	}
 	CompositeRequestChan(f.Compositor).Stack(CompositeRequest{
 		Buffer: f.Buffer,

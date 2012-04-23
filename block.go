@@ -104,6 +104,15 @@ func (b *Block) DoPaint(gc draw2d.GraphicContext) {
 	}
 }
 
+func copyImage(src image.Image) (dst image.Image) {
+	di := image.NewRGBA(src.Bounds())
+	dst = di
+
+	draw.Draw(di, dst.Bounds(), src, image.Point{0, 0}, draw.Over)
+
+	return
+}
+
 func (b *Block) PaintAndComposite() {
 	bgc := b.PrepareBuffer()
 	b.DoPaint(bgc)
@@ -111,6 +120,6 @@ func (b *Block) PaintAndComposite() {
 		return
 	}
 	CompositeRequestChan(b.Compositor).Stack(CompositeRequest{
-		Buffer: b.Buffer,
+		Buffer: copyImage(b.Buffer),
 	})
 }
