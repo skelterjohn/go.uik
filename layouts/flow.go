@@ -72,6 +72,7 @@ func (f *Flow) reflow() {
 		child := children[i]
 		csh, ok := f.childSizeHints[child]
 		if !ok {
+			//println("skip", child)
 			continue
 		}
 		cbounds := geom.Rect{geom.Coord{left, 0}, geom.Coord{}}
@@ -84,8 +85,14 @@ func (f *Flow) reflow() {
 		}
 		cbounds.Max.X = left + ratioX*csh.PreferredSize.X
 		f.ChildrenBounds[child] = cbounds
+
+		child.EventsIn <- uik.ResizeEvent{
+			Size: geom.Coord{cbounds.Max.X-cbounds.Min.X, cbounds.Max.Y},
+		}
+		//fmt.Println("flow", cbounds.Width(), cbounds.Height())
 		left = cbounds.Max.X
 	}
+	// fmt.Println()
 }
 
 // dispense events to children, as appropriate
@@ -110,7 +117,7 @@ func (f *Flow) HandleEvents() {
 				// Do I know you?
 				break
 			}
-
+			
 			if osh, ok := f.childSizeHints[bsh.Block]; ok {
 				f.sizeHint.MinSize.X -= osh.MinSize.X
 				f.sizeHint.MinSize.Y -= osh.MinSize.Y
@@ -130,21 +137,6 @@ func (f *Flow) HandleEvents() {
 			f.SizeHints.Stack(f.sizeHint)
 
 			f.reflow()
-
-			var bbs geom.Rect
-			var ok bool
-			if bbs, ok = f.ChildrenBounds[bsh.Block]; !ok {
-				break
-			}
-
-			bbs.Max.X = bbs.Min.X + bsh.SizeHint.PreferredSize.X
-			bbs.Max.Y = bbs.Min.Y + bsh.SizeHint.PreferredSize.Y
-
-			f.ChildrenBounds[bsh.Block] = bbs
-
-			bsh.Block.EventsIn <- uik.ResizeEvent{
-				Size: bsh.SizeHint.PreferredSize,
-			}
 
 		case b := <-f.Add:
 			f.PlaceBlock(b)

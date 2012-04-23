@@ -107,6 +107,9 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 	RedrawEventChan(f.Redraw).Stack(RedrawEvent{
 		bounds,
 	})
+	b.EventsIn <- ResizeEvent{
+		Size: geom.Coord{bounds.Max.X-bounds.Min.X, bounds.Max.Y-bounds.Min.Y},
+	}
 }
 
 func (f *Foundation) BlocksForCoord(p geom.Coord) (bs []*Block) {
