@@ -87,13 +87,13 @@ func (b *Button) handleEvents() {
 			case uik.MouseDownEvent:
 				b.pressed = true
 				b.Label.SetConfig <- ld
-				b.DoRedraw(uik.RedrawEvent{b.Bounds()})
+				b.Label.PaintAndComposite()
 			case uik.MouseUpEvent:
 				b.pressed = false
 				for c := range b.Clickers {
 					c <- e.Which
 				}
-				b.DoRedraw(uik.RedrawEvent{b.Bounds()})
+				b.Label.PaintAndComposite()
 			case uik.ResizeEvent:
 				b.Foundation.HandleEvent(e)
 				lbounds := b.Bounds()
