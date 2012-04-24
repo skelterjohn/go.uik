@@ -39,7 +39,6 @@ func NewKeyGrab(size geom.Coord) (l *KeyGrab) {
 
 func (l *KeyGrab) render() {
 	l.kbuf = uik.RenderString(l.key, uik.DefaultFontData, 12, color.Black)
-	l.Buffer = nil
 }
 
 func (l *KeyGrab) draw(gc draw2d.GraphicContext) {

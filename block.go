@@ -5,7 +5,22 @@ import (
 	"github.com/skelterjohn/geom"
 	"image"
 	"image/draw"
+	"runtime"
 )
+
+type BlockID int
+
+var blockIDs = make(chan BlockID)
+
+func init() {
+	go func() {
+		var counter BlockID
+		for {
+			counter++
+			blockIDs <- counter
+		}
+	}()
+}
 
 // The Block type is a basic unit that can receive events and draw itself.
 //
@@ -13,6 +28,8 @@ import (
 // based on channels rather than an asynchronous interface based on method
 // calls.
 type Block struct {
+	ID BlockID
+
 	Parent *Foundation
 
 	EventsIn DropChan
@@ -38,6 +55,8 @@ type Block struct {
 }
 
 func (b *Block) Initialize() {
+	b.ID = <-blockIDs
+
 	b.Paint = ClearPaint
 
 	b.EventsIn, b.Events, b.Subscribe = SubscriptionQueue(20)
@@ -54,7 +73,6 @@ func (b *Block) HandleEvent(e interface{}) {
 	switch e := e.(type) {
 	case ResizeEvent:
 		b.Size = e.Size
-		b.PaintAndComposite()
 	case KeyFocusEvent:
 		b.HasKeyFocus = e.Focus
 	}
@@ -89,6 +107,7 @@ func (b *Block) PrepareBuffer() (gc draw2d.GraphicContext) {
 	min := image.Point{0, 0}
 	max := image.Point{int(b.Size.X), int(b.Size.Y)}
 	if b.Buffer == nil || b.Buffer.Bounds().Min != min || b.Buffer.Bounds().Max != max {
+		// Report(b.ID, "making a buffer")
 		b.Buffer = image.NewRGBA(image.Rectangle{
 			Min: min,
 			Max: max,
@@ -105,6 +124,11 @@ func (b *Block) DoPaint(gc draw2d.GraphicContext) {
 }
 
 func copyImage(src image.Image) (dst image.Image) {
+	if false && runtime.GOMAXPROCS(0) == 1 {
+		dst = src
+		return
+	}
+
 	di := image.NewRGBA(src.Bounds())
 	dst = di
 

@@ -22,6 +22,8 @@ type BlockSizeHint struct {
 type Foundation struct {
 	Block
 
+	DrawOp draw.Op
+
 	Children            map[*Block]bool
 	ChildrenBounds      map[*Block]geom.Rect
 	ChildrenLastBuffers map[*Block]image.Image
@@ -39,6 +41,7 @@ type Foundation struct {
 
 func (f *Foundation) Initialize() {
 	f.Block.Initialize()
+	f.DrawOp = draw.Over
 	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
 	f.BlockSizeHints = make(chan BlockSizeHint)
 	f.Children = map[*Block]bool{}
@@ -108,7 +111,7 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 		bounds,
 	})
 	b.EventsIn.SendOrDrop(ResizeEvent{
-		Size: geom.Coord{bounds.Max.X-bounds.Min.X, bounds.Max.Y-bounds.Min.Y},
+		Size: geom.Coord{bounds.Max.X - bounds.Min.X, bounds.Max.Y - bounds.Min.Y},
 	})
 }
 
@@ -142,52 +145,63 @@ func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 
 }
 
+// drawing
+
 func (f *Foundation) CompositeBlockBuffer(b *Block, buf image.Image) (composited bool) {
+	// Report(f.ID, "composite", b.ID, "using", f.DrawOp)
 	bounds, ok := f.ChildrenBounds[b]
 	if !ok {
 		composited = false
 		return
 	}
 	f.PrepareBuffer()
-	draw.Draw(f.Buffer, RectangleForRect(bounds), buf, image.Point{0, 0}, draw.Over)
+	// dstOffset := image.Point{
+	// 	int(bounds.Min.X),
+	// 	int(bounds.Min.Y),
+	// }
+	// copyRGBA(f.Buffer.(*image.RGBA), dstOffset, buf.(*image.RGBA))
+	draw.Draw(f.Buffer, RectangleForRect(bounds), buf, image.Point{0, 0}, f.DrawOp)
 	composited = true
 	return
 }
 
 func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
+	// Report(f.ID, "cbr", cbr.Block.ID)
 	f.ChildrenLastBuffers[cbr.Block] = cbr.Buffer
 	f.Rebuffer()
 }
 
 func (f *Foundation) Rebuffer() {
+	// Report(f.ID, "rebuffer")
 	bgc := f.PrepareBuffer()
 	bgc.Clear()
 	f.DoPaint(bgc)
 	for child, buf := range f.ChildrenLastBuffers {
 		f.CompositeBlockBuffer(child, buf)
 	}
-	CompositeRequestChan(f.Compositor).Stack(CompositeRequest{
+	f.Compositor.Stack(CompositeRequest{
 		Buffer: copyImage(f.Buffer),
 	})
 }
 
 func (f *Foundation) DoRedraw(e RedrawEvent) {
+	// Report(f.ID, "redraw")
 	bgc := f.PrepareBuffer()
 	f.DoPaint(bgc)
 	for child := range f.Children {
-		translatedDirty := e.Bounds
 		bbs, ok := f.ChildrenBounds[child]
 		if !ok {
 			continue
 		}
 
-		translatedDirty.Min.X -= bbs.Min.X
-		translatedDirty.Min.Y -= bbs.Min.Y
-
-		RedrawEventChan(child.Redraw).Stack(RedrawEvent{translatedDirty})
-
 		if buf, ok := f.ChildrenLastBuffers[child]; ok {
 			f.CompositeBlockBuffer(child, buf)
+		} else {
+			translatedDirty := e.Bounds
+			translatedDirty.Min.X -= bbs.Min.X
+			translatedDirty.Min.Y -= bbs.Min.Y
+
+			child.Redraw.Stack(RedrawEvent{translatedDirty})
 		}
 	}
 	if f.Compositor != nil {
@@ -195,6 +209,98 @@ func (f *Foundation) DoRedraw(e RedrawEvent) {
 			Buffer: f.Buffer,
 		}
 	}
+}
+
+// internal events
+
+func (f *Foundation) DoResizeEvent(e ResizeEvent) {
+	if e.Size == f.Size {
+		return
+	}
+	f.Size = e.Size
+	f.Rebuffer()
+}
+
+func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
+	if e.Block == nil {
+		return
+	}
+	if !f.Children[e.Block] {
+		return
+	}
+	if e.Block != f.KeyFocus && f.KeyFocus != nil {
+		f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
+			Focus: false,
+		})
+	}
+	f.KeyFocus = e.Block
+	if f.HasKeyFocus {
+		if f.KeyFocus != nil {
+			f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
+				Focus: true,
+			})
+		}
+	} else {
+		if f.Parent != nil {
+			f.Parent.EventsIn.SendOrDrop(KeyFocusRequest{
+				Block: &f.Block,
+			})
+		}
+	}
+}
+
+func (f *Foundation) HandleEvent(e interface{}) {
+	switch e := e.(type) {
+	case CloseEvent:
+		f.DoCloseEvent(e)
+	case MouseDownEvent:
+		f.DoMouseDownEvent(e)
+	case MouseUpEvent:
+		f.DoMouseUpEvent(e)
+	case ResizeEvent:
+		f.DoResizeEvent(e)
+	case KeyFocusEvent:
+		f.DoKeyFocusEvent(e)
+	case KeyFocusRequest:
+		f.KeyFocusRequest(e)
+	case KeyDownEvent, KeyUpEvent, KeyTypedEvent:
+		f.DoKeyEvent(e)
+	default:
+		f.Block.HandleEvent(e)
+	}
+}
+
+// dispense events to children, as appropriate
+func (f *Foundation) HandleEvents() {
+	for {
+		select {
+		case e := <-f.Events:
+			f.HandleEvent(e)
+		case e := <-f.Redraw:
+			f.DoRedraw(e)
+		case e := <-f.CompositeBlockRequests:
+			f.DoCompositeBlockRequest(e)
+		}
+	}
+}
+
+// input events
+
+func (f *Foundation) DoKeyFocusEvent(e KeyFocusEvent) {
+	if e.Focus == f.HasKeyFocus {
+		return
+	}
+	f.HasKeyFocus = e.Focus
+	if f.KeyFocus != nil {
+		f.KeyFocus.EventsIn.SendOrDrop(e)
+	}
+}
+
+func (f *Foundation) DoKeyEvent(e interface{}) {
+	if f.KeyFocus == nil {
+		return
+	}
+	f.KeyFocus.EventsIn.SendOrDrop(e)
 }
 
 func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
@@ -237,96 +343,8 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 	delete(f.DragOriginBlocks, e.Which)
 }
 
-func (f *Foundation) DoResizeEvent(e ResizeEvent) {
-	if e.Size == f.Size {
-		return
-	}
-	f.Size = e.Size
-	f.Rebuffer()
-}
-
 func (f *Foundation) DoCloseEvent(e CloseEvent) {
 	for b := range f.Children {
 		b.EventsIn.SendOrDrop(e)
-	}
-}
-
-func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
-	if e.Block == nil {
-		return
-	}
-	if !f.Children[e.Block] {
-		return
-	}
-	if e.Block != f.KeyFocus && f.KeyFocus != nil {
-		f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
-			Focus: false,
-		})
-	}
-	f.KeyFocus = e.Block
-	if f.HasKeyFocus {
-		if f.KeyFocus != nil {
-			f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
-				Focus: true,
-			})
-		}
-	} else {
-		if f.Parent != nil {
-			f.Parent.EventsIn.SendOrDrop(KeyFocusRequest{
-				Block: &f.Block,
-			})
-		}
-	}
-}
-
-func (f *Foundation) DoKeyFocusEvent(e KeyFocusEvent) {
-	if e.Focus == f.HasKeyFocus {
-		return
-	}
-	f.HasKeyFocus = e.Focus
-	if f.KeyFocus != nil {
-		f.KeyFocus.EventsIn.SendOrDrop(e)
-	}
-}
-
-func (f *Foundation) DoKeyEvent(e interface{}) {
-	if f.KeyFocus == nil {
-		return
-	}
-	f.KeyFocus.EventsIn.SendOrDrop(e)
-}
-
-func (f *Foundation) HandleEvent(e interface{}) {
-	switch e := e.(type) {
-	case CloseEvent:
-		f.DoCloseEvent(e)
-	case MouseDownEvent:
-		f.DoMouseDownEvent(e)
-	case MouseUpEvent:
-		f.DoMouseUpEvent(e)
-	case ResizeEvent:
-		f.DoResizeEvent(e)
-	case KeyFocusEvent:
-		f.DoKeyFocusEvent(e)
-	case KeyFocusRequest:
-		f.KeyFocusRequest(e)
-	case KeyDownEvent, KeyUpEvent, KeyTypedEvent:
-		f.DoKeyEvent(e)
-	default:
-		f.Block.HandleEvent(e)
-	}
-}
-
-// dispense events to children, as appropriate
-func (f *Foundation) HandleEvents() {
-	for {
-		select {
-		case e := <-f.Events:
-			f.HandleEvent(e)
-		case e := <-f.Redraw:
-			f.DoRedraw(e)
-		case e := <-f.CompositeBlockRequests:
-			f.DoCompositeBlockRequest(e)
-		}
 	}
 }

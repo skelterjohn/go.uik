@@ -1,87 +1,5 @@
 package uik
 
-// this type stolen from github.com/kylelemons/iq
-type Ring struct {
-	cap    int
-	cnt, i int
-	data   []interface{}
-}
-
-func (rb *Ring) Empty() bool {
-	return rb.cnt == 0
-}
-
-func (rb *Ring) Peek() interface{} {
-	return rb.data[rb.i]
-}
-
-func (rb *Ring) Enqueue(x interface{}) {
-	if rb.cap != 0 && rb.cnt >= rb.cap {
-		return
-	}
-	if rb.cnt >= len(rb.data) {
-		rb.grow(2*rb.cnt + 1)
-	}
-	rb.data[(rb.i+rb.cnt)%len(rb.data)] = x
-	rb.cnt++
-}
-
-func (rb *Ring) Dequeue() {
-	rb.cnt, rb.i = rb.cnt-1, (rb.i+1)%len(rb.data)
-}
-
-func (rb *Ring) grow(newSize int) {
-	newData := make([]interface{}, newSize)
-
-	n := copy(newData, rb.data[rb.i:])
-	copy(newData[n:], rb.data[:rb.cnt-n])
-
-	rb.i = 0
-	rb.data = newData
-}
-
-// this function stolen from github.com/kylelemons/iq
-func RingI2Q(in <-chan interface{}, next chan<- interface{}, cap int) {
-	var rb Ring
-	rb.cap = cap
-	defer func() {
-		for !rb.Empty() {
-			next <- rb.Peek()
-			rb.Dequeue()
-		}
-		close(next)
-	}()
-
-	for {
-		if rb.Empty() {
-			v, ok := <-in
-			if !ok {
-				return
-			}
-			rb.Enqueue(v)
-		}
-
-		select {
-		case next <- rb.Peek():
-			rb.Dequeue()
-		case v, ok := <-in:
-			if !ok {
-				return
-			}
-			rb.Enqueue(v)
-		}
-	}
-}
-
-func QueuePipe2() (in chan<- interface{}, out <-chan interface{}) {
-	inch := make(chan interface{})
-	in = inch
-	outch := make(chan interface{})
-	out = outch
-	go RingI2Q(inch, outch, 0)
-	return
-}
-
 type CompositeRequestChan chan CompositeRequest
 
 func (ch CompositeRequestChan) Stack(cr CompositeRequest) {
@@ -162,8 +80,6 @@ func (ch DropChan) SendOrDrop(e interface{}) {
 func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, sub chan<- Subscription) {
 	inch := make(chan interface{}, cap)
 	mch := inch
-	// mch := make(chan interface{})
-	// go RingIQ(inch, mch, cap)
 
 	subch := make(chan Subscription, 1)
 	outch := make(chan interface{}, 1)

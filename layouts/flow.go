@@ -3,6 +3,7 @@ package layouts
 import (
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
+	"image/draw"
 	"math"
 )
 
@@ -33,7 +34,7 @@ func NewFlow(size geom.Coord) (f *Flow) {
 
 func (f *Flow) Initialize() {
 	f.Foundation.Initialize()
-
+	f.DrawOp = draw.Over
 	f.Add = make(chan *uik.Block, 10)
 	f.Remove = make(chan *uik.Block, 10)
 	f.childSizeHints = map[*uik.Block]uik.SizeHint{}
@@ -87,7 +88,7 @@ func (f *Flow) reflow() {
 		f.ChildrenBounds[child] = cbounds
 
 		child.EventsIn <- uik.ResizeEvent{
-			Size: geom.Coord{cbounds.Max.X-cbounds.Min.X, cbounds.Max.Y},
+			Size: geom.Coord{cbounds.Max.X - cbounds.Min.X, cbounds.Max.Y},
 		}
 		//fmt.Println("flow", cbounds.Width(), cbounds.Height())
 		left = cbounds.Max.X
@@ -111,13 +112,14 @@ func (f *Flow) HandleEvents() {
 			f.DoRedraw(e)
 		case e := <-f.CompositeBlockRequests:
 			f.DoCompositeBlockRequest(e)
+	
 		case bsh := <-f.BlockSizeHints:
 
 			if !f.Children[bsh.Block] {
 				// Do I know you?
 				break
 			}
-			
+
 			if osh, ok := f.childSizeHints[bsh.Block]; ok {
 				f.sizeHint.MinSize.X -= osh.MinSize.X
 				f.sizeHint.MinSize.Y -= osh.MinSize.Y

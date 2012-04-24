@@ -5,6 +5,7 @@ import (
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
 	"image/color"
+	"image/draw"
 	"math"
 )
 
@@ -75,7 +76,19 @@ type Grid struct {
 
 func NewGrid(cfg GridConfig) (g *Grid) {
 	g = new(Grid)
+
+	g.config = cfg
+
 	g.Initialize()
+
+	go g.handleEvents()
+
+	return
+}
+
+func (g *Grid) Initialize() {
+	g.Foundation.Initialize()
+	g.DrawOp = draw.Over
 
 	g.children = map[*uik.Block]bool{}
 	g.childrenSizeHints = map[*uik.Block]uik.SizeHint{}
@@ -93,10 +106,6 @@ func NewGrid(cfg GridConfig) (g *Grid) {
 	g.Paint = func(gc draw2d.GraphicContext) {
 		g.draw(gc)
 	}
-
-	go g.handleEvents()
-
-	return
 }
 
 func (g *Grid) addBlock(bd BlockData) {
@@ -274,12 +283,10 @@ func (g *Grid) handleEvents() {
 				g.Foundation.HandleEvent(e)
 			}
 		case bsh := <-g.BlockSizeHints:
-
 			if !g.children[bsh.Block] {
 				// Do I know you?
 				break
 			}
-
 			g.childrenSizeHints[bsh.Block] = bsh.SizeHint
 
 			g.makePreferences()
@@ -287,6 +294,7 @@ func (g *Grid) handleEvents() {
 			g.DoRedraw(e)
 		case e := <-g.CompositeBlockRequests:
 			g.DoCompositeBlockRequest(e)
+			// go uik.ShowBuffer("grid", g.Buffer)
 		case g.config = <-g.setConfig:
 			g.makePreferences()
 		case g.getConfig <- g.config:

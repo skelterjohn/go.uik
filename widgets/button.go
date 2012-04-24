@@ -6,6 +6,7 @@ import (
 	"github.com/skelterjohn/go.uik"
 	"github.com/skelterjohn/go.wde"
 	"image/color"
+	"image/draw"
 	"math"
 )
 
@@ -23,11 +24,29 @@ type Button struct {
 
 func NewButton(size geom.Coord, label string) (b *Button) {
 	b = new(Button)
-	b.Initialize()
 	b.Size = size
+	b.Initialize()
 
-	b.Label = NewLabel(size, LabelData{
+	// uik.Report(b.ID, "is button")
+
+	b.Label.SetConfig <- LabelData{
 		Text:     label,
+		FontSize: 12,
+		Color:    color.Black,
+	}
+
+	go b.handleEvents()
+
+	return
+}
+
+func (b *Button) Initialize() {
+	b.Foundation.Initialize()
+
+	b.DrawOp = draw.Over
+
+	b.Label = NewLabel(b.Size, LabelData{
+		Text:     "",
 		FontSize: 12,
 		Color:    color.Black,
 	})
@@ -39,16 +58,12 @@ func NewButton(size geom.Coord, label string) (b *Button) {
 	b.PlaceBlock(&b.Label.Block, lbounds)
 
 	b.Clickers = map[Clicker]bool{}
-	b.AddClicker = make(chan Clicker)
-	b.RemoveClicker = make(chan Clicker)
-
-	go b.handleEvents()
+	b.AddClicker = make(chan Clicker, 1)
+	b.RemoveClicker = make(chan Clicker, 1)
 
 	b.Paint = func(gc draw2d.GraphicContext) {
 		b.draw(gc)
 	}
-
-	return
 }
 
 func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
@@ -65,14 +80,17 @@ func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
 
 func (b *Button) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
+
 	gc.SetStrokeColor(color.Black)
 	if b.pressed {
 		gc.SetFillColor(color.RGBA{150, 150, 150, 255})
+		safeRect(gc, geom.Coord{0, 0}, b.Size)
+		gc.FillStroke()
 	} else {
-		gc.SetFillColor(color.White)
+		gc.SetFillColor(color.RGBA{200, 200, 200, 255})
+		safeRect(gc, geom.Coord{0, 0}, b.Size)
+		gc.FillStroke()
 	}
-	safeRect(gc, geom.Coord{0, 0}, b.Size)
-	gc.FillStroke()
 }
 
 func (b *Button) handleEvents() {
@@ -86,8 +104,7 @@ func (b *Button) handleEvents() {
 			switch e := e.(type) {
 			case uik.MouseDownEvent:
 				b.pressed = true
-				b.Label.SetConfig <- ld
-				b.Label.PaintAndComposite()
+				b.Rebuffer()
 			case uik.MouseUpEvent:
 				b.pressed = false
 				for c := range b.Clickers {
@@ -96,7 +113,8 @@ func (b *Button) handleEvents() {
 					default:
 					}
 				}
-				b.Label.PaintAndComposite()
+				b.Rebuffer()
+				// go uik.ShowBuffer("button buffer", b.Buffer)
 			case uik.ResizeEvent:
 				b.Foundation.HandleEvent(e)
 				lbounds := b.Bounds()
@@ -132,4 +150,3 @@ func (b *Button) handleEvents() {
 		}
 	}
 }
-
