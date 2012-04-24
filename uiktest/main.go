@@ -56,17 +56,17 @@ func main() {
 		}
 	}()
 
-	cb := widgets.NewCheckbox(geom.Coord{50, 50})
+	// cb := widgets.NewCheckbox(geom.Coord{50, 50})
 
-	kg := widgets.NewKeyGrab(geom.Coord{50, 50})
-	kg2 := widgets.NewKeyGrab(geom.Coord{50, 50})
+	// kg := widgets.NewKeyGrab(geom.Coord{50, 50})
+	// kg2 := widgets.NewKeyGrab(geom.Coord{50, 50})
 
 	fl.Add <- &b.Block
-	fl.Add <- &l.Block
-	fl.Add <- &kg.Block
+	//fl.Add <- &l.Block
+	//fl.Add <- &kg.Block
 	fl.Add <- &b2.Block
-	fl.Add <- &cb.Block
-	fl.Add <- &kg2.Block
+	//fl.Add <- &cb.Block
+	//fl.Add <- &kg2.Block
 
 	g := layouts.NewGrid(layouts.GridConfig{})
 
@@ -115,7 +115,7 @@ func main() {
 	w.Show()
 
 	// Here we set up a subscription on the window's close events.
-	done := make(chan interface{})
+	done := make(chan interface{}, 1)
 	isDone := func(e interface{}) (accept, done bool) {
 		_, accept = e.(uik.CloseEvent)
 		done = accept

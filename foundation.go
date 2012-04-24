@@ -107,9 +107,9 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 	RedrawEventChan(f.Redraw).Stack(RedrawEvent{
 		bounds,
 	})
-	b.EventsIn <- ResizeEvent{
+	b.EventsIn.SendOrDrop(ResizeEvent{
 		Size: geom.Coord{bounds.Max.X-bounds.Min.X, bounds.Max.Y-bounds.Min.Y},
-	}
+	})
 }
 
 func (f *Foundation) BlocksForCoord(p geom.Coord) (bs []*Block) {
@@ -155,8 +155,7 @@ func (f *Foundation) CompositeBlockBuffer(b *Block, buf image.Image) (composited
 }
 
 func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
-	b := cbr.Block
-	f.ChildrenLastBuffers[b] = cbr.Buffer
+	f.ChildrenLastBuffers[cbr.Block] = cbr.Buffer
 	f.Rebuffer()
 }
 
@@ -168,7 +167,7 @@ func (f *Foundation) Rebuffer() {
 		f.CompositeBlockBuffer(child, buf)
 	}
 	CompositeRequestChan(f.Compositor).Stack(CompositeRequest{
-		Buffer: f.Buffer,
+		Buffer: copyImage(f.Buffer),
 	})
 }
 
@@ -207,7 +206,7 @@ func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 		f.DragOriginBlocks[e.Which] = append(f.DragOriginBlocks[e.Which], b)
 		e.Loc.X -= bbs.Min.X
 		e.Loc.Y -= bbs.Min.Y
-		b.EventsIn <- e
+		b.EventsIn.SendOrDrop(e)
 	})
 }
 
@@ -220,7 +219,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			be := e
 			be.Loc.X -= bbs.Min.X
 			be.Loc.Y -= bbs.Min.Y
-			b.EventsIn <- be
+			b.EventsIn.SendOrDrop(be)
 		}
 	})
 	if origins, ok := f.DragOriginBlocks[e.Which]; ok {
@@ -232,7 +231,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			obbs := f.ChildrenBounds[origin]
 			oe.Loc.X -= obbs.Min.X
 			oe.Loc.Y -= obbs.Min.Y
-			origin.EventsIn <- oe
+			origin.EventsIn.SendOrDrop(oe)
 		}
 	}
 	delete(f.DragOriginBlocks, e.Which)
@@ -248,7 +247,7 @@ func (f *Foundation) DoResizeEvent(e ResizeEvent) {
 
 func (f *Foundation) DoCloseEvent(e CloseEvent) {
 	for b := range f.Children {
-		b.EventsIn <- e
+		b.EventsIn.SendOrDrop(e)
 	}
 }
 
@@ -260,22 +259,22 @@ func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
 		return
 	}
 	if e.Block != f.KeyFocus && f.KeyFocus != nil {
-		f.KeyFocus.EventsIn <- KeyFocusEvent{
+		f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
 			Focus: false,
-		}
+		})
 	}
 	f.KeyFocus = e.Block
 	if f.HasKeyFocus {
 		if f.KeyFocus != nil {
-			f.KeyFocus.EventsIn <- KeyFocusEvent{
+			f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
 				Focus: true,
-			}
+			})
 		}
 	} else {
 		if f.Parent != nil {
-			f.Parent.EventsIn <- KeyFocusRequest{
+			f.Parent.EventsIn.SendOrDrop(KeyFocusRequest{
 				Block: &f.Block,
-			}
+			})
 		}
 	}
 }
@@ -286,7 +285,7 @@ func (f *Foundation) DoKeyFocusEvent(e KeyFocusEvent) {
 	}
 	f.HasKeyFocus = e.Focus
 	if f.KeyFocus != nil {
-		f.KeyFocus.EventsIn <- e
+		f.KeyFocus.EventsIn.SendOrDrop(e)
 	}
 }
 
@@ -294,7 +293,7 @@ func (f *Foundation) DoKeyEvent(e interface{}) {
 	if f.KeyFocus == nil {
 		return
 	}
-	f.KeyFocus.EventsIn <- e
+	f.KeyFocus.EventsIn.SendOrDrop(e)
 }
 
 func (f *Foundation) HandleEvent(e interface{}) {

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const FrameDelay = 16 * 1e6
+const FrameDelay = 1 * 1e6
 
 // A foundation that wraps a wde.Window
 type WindowFoundation struct {
@@ -62,47 +62,47 @@ func (wf *WindowFoundation) handleWindowEvents() {
 	for e := range wf.W.EventChan() {
 		switch e := e.(type) {
 		case wde.CloseEvent:
-			wf.EventsIn <- CloseEvent{
+			wf.EventsIn.SendOrDrop(CloseEvent{
 				CloseEvent: e,
-			}
+			})
 		case wde.MouseDownEvent:
-			wf.EventsIn <- MouseDownEvent{
+			wf.EventsIn.SendOrDrop(MouseDownEvent{
 				MouseDownEvent: e,
 				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
-			}
+			})
 		case wde.MouseUpEvent:
-			wf.EventsIn <- MouseUpEvent{
+			wf.EventsIn.SendOrDrop(MouseUpEvent{
 				MouseUpEvent: e,
 				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
-			}
+			})
 		case wde.KeyDownEvent:
-			wf.EventsIn <- KeyDownEvent{
+			wf.EventsIn.SendOrDrop(KeyDownEvent{
 				KeyDownEvent: e,
-			}
+			})
 		case wde.KeyUpEvent:
-			wf.EventsIn <- KeyUpEvent{
+			wf.EventsIn.SendOrDrop(KeyUpEvent{
 				KeyUpEvent: e,
-			}
+			})
 		case wde.KeyTypedEvent:
-			wf.EventsIn <- KeyTypedEvent{
+			wf.EventsIn.SendOrDrop(KeyTypedEvent{
 				KeyTypedEvent: e,
-			}
+			})
 		case wde.ResizeEvent:
 			wf.waitForRepaint <- true
-			wf.EventsIn <- ResizeEvent{
+			wf.EventsIn.SendOrDrop(ResizeEvent{
 				ResizeEvent: e,
 				Size: geom.Coord{
 					X: float64(e.Width),
 					Y: float64(e.Height),
 				},
-			}
-			wf.Redraw <- RedrawEvent{
+			})
+			wf.Redraw.Stack(RedrawEvent{
 				wf.Bounds(),
-			}
+			})
 			go wf.SleepRepaint(FrameDelay)
 		}
 	}

@@ -16,7 +16,7 @@ type Button struct {
 	Label   *Label
 	pressed bool
 
-	Clickers      map[Clicker]chan<- interface{}
+	Clickers      map[Clicker]bool
 	AddClicker    chan Clicker
 	RemoveClicker chan Clicker
 }
@@ -38,7 +38,7 @@ func NewButton(size geom.Coord, label string) (b *Button) {
 	lbounds.Max.Y -= 1
 	b.PlaceBlock(&b.Label.Block, lbounds)
 
-	b.Clickers = map[Clicker]chan<- interface{}{}
+	b.Clickers = map[Clicker]bool{}
 	b.AddClicker = make(chan Clicker)
 	b.RemoveClicker = make(chan Clicker)
 
@@ -91,7 +91,10 @@ func (b *Button) handleEvents() {
 			case uik.MouseUpEvent:
 				b.pressed = false
 				for c := range b.Clickers {
-					c <- e.Which
+					select {
+					case c <- e.Which:
+					default:
+					}
 				}
 				b.Label.PaintAndComposite()
 			case uik.ResizeEvent:
@@ -111,13 +114,11 @@ func (b *Button) handleEvents() {
 		case e := <-b.Redraw:
 			b.DoRedraw(e)
 		case cbr := <-b.CompositeBlockRequests:
-			b.DoPaint(b.PrepareBuffer())
 			b.DoCompositeBlockRequest(cbr)
 		case c := <-b.AddClicker:
-			clickHead := clickerPipe(c)
-			b.Clickers[c] = clickHead
+			b.Clickers[c] = true
 		case c := <-b.RemoveClicker:
-			if _, ok := b.Clickers[c]; ok {
+			if b.Clickers[c] {
 				delete(b.Clickers, c)
 			}
 		case bsh := <-b.BlockSizeHints:
@@ -132,14 +133,3 @@ func (b *Button) handleEvents() {
 	}
 }
 
-func clickerPipe(c Clicker) (head chan interface{}) {
-	head = make(chan interface{})
-	tail := make(chan interface{})
-	go uik.RingIQ(head, tail, 1)
-	go func() {
-		for click := range tail {
-			c <- click.(wde.Button)
-		}
-	}()
-	return
-}

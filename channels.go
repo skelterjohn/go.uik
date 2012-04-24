@@ -41,7 +41,7 @@ func (rb *Ring) grow(newSize int) {
 }
 
 // this function stolen from github.com/kylelemons/iq
-func RingIQ(in <-chan interface{}, next chan<- interface{}, cap int) {
+func RingI2Q(in <-chan interface{}, next chan<- interface{}, cap int) {
 	var rb Ring
 	rb.cap = cap
 	defer func() {
@@ -73,12 +73,12 @@ func RingIQ(in <-chan interface{}, next chan<- interface{}, cap int) {
 	}
 }
 
-func QueuePipe() (in chan<- interface{}, out <-chan interface{}) {
+func QueuePipe2() (in chan<- interface{}, out <-chan interface{}) {
 	inch := make(chan interface{})
 	in = inch
 	outch := make(chan interface{})
 	out = outch
-	go RingIQ(inch, outch, 0)
+	go RingI2Q(inch, outch, 0)
 	return
 }
 
@@ -150,10 +150,20 @@ type Subscription struct {
 	Ch     chan<- interface{}
 }
 
+type DropChan chan<- interface{}
+
+func (ch DropChan) SendOrDrop(e interface{}) {
+	select {
+	case ch <- e:
+	default:
+	}
+}
+
 func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, sub chan<- Subscription) {
-	inch := make(chan interface{})
-	mch := make(chan interface{})
-	go RingIQ(inch, mch, cap)
+	inch := make(chan interface{}, cap)
+	mch := inch
+	// mch := make(chan interface{})
+	// go RingIQ(inch, mch, cap)
 
 	subch := make(chan Subscription, 1)
 	outch := make(chan interface{}, 1)
@@ -172,16 +182,17 @@ func SubscriptionQueue(cap int) (in chan<- interface{}, out <-chan interface{}, 
 				for foo, ch := range subscriptions {
 					accept, done := (*foo)(e)
 					if accept {
-						ch <- e
+						select {
+						case ch <- e:
+						default:
+						}
 					}
 					if done {
 						delete(subscriptions, foo)
 					}
 				}
 			case sub := <-subch:
-				subin := make(chan interface{}, 1)
-				go RingIQ(subin, sub.Ch, 10)
-				subscriptions[&sub.Filter] = subin
+				subscriptions[&sub.Filter] = sub.Ch
 			}
 
 		}

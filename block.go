@@ -15,7 +15,7 @@ import (
 type Block struct {
 	Parent *Foundation
 
-	EventsIn chan<- interface{}
+	EventsIn DropChan
 	Events   <-chan interface{}
 
 	Subscribe chan<- Subscription
@@ -40,7 +40,7 @@ type Block struct {
 func (b *Block) Initialize() {
 	b.Paint = ClearPaint
 
-	b.EventsIn, b.Events, b.Subscribe = SubscriptionQueue(0)
+	b.EventsIn, b.Events, b.Subscribe = SubscriptionQueue(20)
 
 	b.Redraw = make(RedrawEventChan, 1)
 
