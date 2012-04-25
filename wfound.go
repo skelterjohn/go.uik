@@ -106,6 +106,15 @@ func (wf *WindowFoundation) handleWindowEvents() {
 				Event:      ev,
 				CloseEvent: e,
 			})
+		case wde.MouseMovedEvent:
+			wf.UserEventsIn.SendOrDrop(MouseMovedEvent{
+				Event:           ev,
+				MouseMovedEvent: e,
+				MouseLocator: MouseLocator{
+					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
+				},
+				From: geom.Coord{float64(e.From.X), float64(e.From.Y)},
+			})
 		case wde.MouseDownEvent:
 			wf.UserEventsIn.SendOrDrop(MouseDownEvent{
 				Event:          ev,
@@ -127,6 +136,24 @@ func (wf *WindowFoundation) handleWindowEvents() {
 			wf.UserEventsIn.SendOrDrop(MouseDraggedEvent{
 				Event:             ev,
 				MouseDraggedEvent: e,
+				MouseLocator: MouseLocator{
+					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
+				},
+				From: geom.Coord{float64(e.From.X), float64(e.From.Y)},
+			})
+		case wde.MouseEnteredEvent:
+			wf.UserEventsIn.SendOrDrop(MouseEnteredEvent{
+				Event:             ev,
+				MouseEnteredEvent: e,
+				MouseLocator: MouseLocator{
+					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
+				},
+				From: geom.Coord{float64(e.From.X), float64(e.From.Y)},
+			})
+		case wde.MouseExitedEvent:
+			wf.UserEventsIn.SendOrDrop(MouseExitedEvent{
+				Event:            ev,
+				MouseExitedEvent: e,
 				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},

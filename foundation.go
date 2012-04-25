@@ -211,6 +211,8 @@ func (f *Foundation) HandleEvent(e interface{}) {
 		f.DoMouseUpEvent(e)
 	case MouseDraggedEvent:
 		f.DoMouseDraggedEvent(e)
+	case MouseMovedEvent:
+		f.DoMouseMovedEvent(e)
 	case ResizeEvent:
 		f.DoResizeEvent(e)
 	case KeyFocusEvent:
@@ -269,6 +271,42 @@ func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 	})
 }
 
+func (f *Foundation) DoMouseMovedEvent(e MouseMovedEvent) {
+	fromSet := map[*Block]bool{}
+	f.InvokeOnBlocksUnder(e.From, func(b *Block) {
+		fromSet[b] = true
+	})
+	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
+		bbs := f.ChildrenBounds[b]
+		if !fromSet[b] {
+			ee := MouseEnteredEvent{
+				Event:        e.Event,
+				MouseLocator: e.MouseLocator,
+				From:         e.From,
+			}
+			ee.Loc = ee.Loc.Minus(bbs.Min)
+			ee.From = ee.From.Minus(bbs.Min)
+			b.UserEventsIn.SendOrDrop(ee)
+		} else {
+			delete(fromSet, b)
+		}
+		e.Loc = e.Loc.Minus(bbs.Min)
+		e.From = e.From.Minus(bbs.Min)
+		b.UserEventsIn.SendOrDrop(e)
+	})
+	for fromBlock := range fromSet {
+		bbs := f.ChildrenBounds[fromBlock]
+		ee := MouseExitedEvent{
+			Event:        e.Event,
+			MouseLocator: e.MouseLocator,
+			From:         e.From,
+		}
+		ee.Loc = ee.Loc.Minus(bbs.Min)
+		ee.From = ee.From.Minus(bbs.Min)
+		fromBlock.UserEventsIn.SendOrDrop(ee)
+	}
+}
+
 func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 	touched := map[*Block]bool{}
 	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
@@ -276,8 +314,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 		bbs := f.ChildrenBounds[b]
 		if b != nil {
 			be := e
-			be.Loc.X -= bbs.Min.X
-			be.Loc.Y -= bbs.Min.Y
+			be.Loc = be.Loc.Minus(bbs.Min)
 			b.UserEventsIn.SendOrDrop(be)
 		}
 	})
@@ -288,8 +325,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			}
 			oe := e
 			obbs := f.ChildrenBounds[origin]
-			oe.Loc.X -= obbs.Min.X
-			oe.Loc.Y -= obbs.Min.Y
+			oe.Loc = oe.Loc.Minus(obbs.Min)
 			origin.UserEventsIn.SendOrDrop(oe)
 		}
 	}
@@ -297,21 +333,46 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 }
 
 func (f *Foundation) DoMouseDraggedEvent(e MouseDraggedEvent) {
+	fromSet := map[*Block]bool{}
+	f.InvokeOnBlocksUnder(e.From, func(b *Block) {
+		fromSet[b] = true
+	})
 	// Report(f.ID, "mde")
 	touched := map[*Block]bool{}
 	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
 		touched[b] = true
 		bbs := f.ChildrenBounds[b]
+		if !fromSet[b] {
+			ee := MouseEnteredEvent{
+				Event:        e.Event,
+				MouseLocator: e.MouseLocator,
+				From:         e.From,
+			}
+			ee.Loc = ee.Loc.Minus(bbs.Min)
+			ee.From = ee.From.Minus(bbs.Min)
+			b.UserEventsIn.SendOrDrop(ee)
+		} else {
+			delete(fromSet, b)
+		}
 		if b != nil {
 			be := e
-			be.Loc.X -= bbs.Min.X
-			be.Loc.Y -= bbs.Min.Y
-			be.From.X -= bbs.Min.X
-			be.From.Y -= bbs.Min.Y
+			be.Loc = be.Loc.Minus(bbs.Min)
+			be.From = be.From.Minus(bbs.Min)
 			// Report(f.ID, "forward", b.ID)
 			b.UserEventsIn.SendOrDrop(be)
 		}
 	})
+	for fromBlock := range fromSet {
+		bbs := f.ChildrenBounds[fromBlock]
+		ee := MouseExitedEvent{
+			Event:        e.Event,
+			MouseLocator: e.MouseLocator,
+			From:         e.From,
+		}
+		ee.Loc = ee.Loc.Minus(bbs.Min)
+		ee.From = ee.From.Minus(bbs.Min)
+		fromBlock.UserEventsIn.SendOrDrop(ee)
+	}
 	if origins, ok := f.DragOriginBlocks[e.Which]; ok {
 		for _, origin := range origins {
 			if touched[origin] {
@@ -321,10 +382,8 @@ func (f *Foundation) DoMouseDraggedEvent(e MouseDraggedEvent) {
 			// Report(f.ID, "origin forward", origin.ID)
 			oe := e
 			obbs := f.ChildrenBounds[origin]
-			oe.Loc.X -= obbs.Min.X
-			oe.Loc.Y -= obbs.Min.Y
-			oe.From.X -= obbs.Min.X
-			oe.From.Y -= obbs.Min.Y
+			oe.Loc = oe.Loc.Minus(obbs.Min)
+			oe.From = oe.From.Minus(obbs.Min)
 			origin.UserEventsIn.SendOrDrop(oe)
 		}
 	}

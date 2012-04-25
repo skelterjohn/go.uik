@@ -53,6 +53,20 @@ type MouseUpEvent struct {
 	MouseLocator
 }
 
+type MouseEnteredEvent struct {
+	Event
+	wde.MouseEnteredEvent
+	MouseLocator
+	From geom.Coord
+}
+
+type MouseExitedEvent struct {
+	Event
+	wde.MouseExitedEvent
+	MouseLocator
+	From geom.Coord
+}
+
 type CloseEvent struct {
 	Event
 	wde.CloseEvent

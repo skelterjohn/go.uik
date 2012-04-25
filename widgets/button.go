@@ -102,6 +102,10 @@ func (b *Button) handleEvents() {
 		select {
 		case e := <-b.UserEvents:
 			switch e := e.(type) {
+			case uik.MouseEnteredEvent:
+
+			case uik.MouseExitedEvent:
+
 			case uik.MouseDownEvent:
 				b.pressed = true
 				b.Invalidate()

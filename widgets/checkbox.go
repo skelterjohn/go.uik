@@ -76,6 +76,16 @@ func (c *Checkbox) handleEvents() {
 		select {
 		case e := <-c.UserEvents:
 			switch e := e.(type) {
+			case uik.MouseEnteredEvent:
+				if c.pressed {
+					c.pressHover = true
+					c.Invalidate()
+				}
+			case uik.MouseExitedEvent:
+				if c.pressed {
+					c.pressHover = false
+					c.Invalidate()
+				}
 			case uik.MouseDownEvent:
 				c.pressed = true
 				c.pressHover = true
@@ -87,17 +97,6 @@ func (c *Checkbox) handleEvents() {
 				}
 				c.pressHover = false
 				c.pressed = false
-			case uik.MouseDraggedEvent:
-				if !c.pressed {
-					break
-				}
-				hover := c.Bounds().ContainsCoord(e.Where())
-				// uik.Report(c.ID, "mde")
-				if hover != c.pressHover {
-					c.pressHover = hover
-					c.Invalidate()
-					// uik.Report("invalidate pressHover")
-				}
 			default:
 				c.Block.HandleEvent(e)
 			}
