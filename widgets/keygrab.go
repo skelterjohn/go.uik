@@ -58,7 +58,7 @@ func (l *KeyGrab) GrabFocus() {
 	if l.HasKeyFocus {
 		return
 	}
-	l.Parent.EventsIn <- uik.KeyFocusRequest{
+	l.Parent.UserEventsIn <- uik.KeyFocusRequest{
 		Block: &l.Block,
 	}
 }
@@ -66,22 +66,20 @@ func (l *KeyGrab) GrabFocus() {
 func (l *KeyGrab) handleEvents() {
 	for {
 		select {
-		case e := <-l.Events:
+		case e := <-l.UserEvents:
 			switch e := e.(type) {
 			case uik.MouseDownEvent:
 				l.GrabFocus()
 			case uik.KeyTypedEvent:
 				l.key = e.Letter
 				l.render()
-				l.PaintAndComposite()
+				l.Invalidate()
 			case uik.KeyFocusEvent:
 				l.HandleEvent(e)
-				l.PaintAndComposite()
+				l.Invalidate()
 			default:
 				l.HandleEvent(e)
 			}
-		case <-l.Redraw:
-			l.PaintAndComposite()
 		}
 	}
 }

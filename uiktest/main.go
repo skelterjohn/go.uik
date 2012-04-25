@@ -24,7 +24,7 @@ func main() {
 	var b *widgets.Button
 	var ld widgets.LabelData
 	if true {
-		b = widgets.NewButton(geom.Coord{100, 50}, "Hi")
+		b = widgets.NewButton("Hi")
 		// Here we get the button's label's data
 		ld = <-b.Label.GetConfig
 		// we modify the copy for a special message to display
@@ -47,7 +47,7 @@ func main() {
 	}
 	var b2 *widgets.Button
 	if true {
-		b2 = widgets.NewButton(geom.Coord{70, 30}, "there")
+		b2 = widgets.NewButton("there")
 		ld2 := <-b2.Label.GetConfig
 		ld2.Text = "BAM"
 		clicker2 := make(widgets.Clicker)
@@ -121,15 +121,17 @@ func main() {
 
 		fl.Add <- &b.Block
 		fl.Add <- &l.Block
-		fl.Add <- &kg.Block
-		fl.Add <- &b2.Block
-		fl.Add <- &cb.Block
-		fl.Add <- &kg2.Block
-		fl.Add <- &g.Block
+		if true {
+			fl.Add <- &kg.Block
+			fl.Add <- &b2.Block
+			fl.Add <- &cb.Block
+			fl.Add <- &kg2.Block
+			fl.Add <- &g.Block
+		}
 	}
 	// We add it to the window, taking up the entire space the window has.
-	w.SetBlock(&fl.Block)
-
+	w.SetPane(&fl.Block)
+	
 	w.Show()
 
 	// Here we set up a subscription on the window's close events.

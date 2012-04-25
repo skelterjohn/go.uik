@@ -22,10 +22,12 @@ type Button struct {
 	RemoveClicker chan Clicker
 }
 
-func NewButton(size geom.Coord, label string) (b *Button) {
+func NewButton(label string) (b *Button) {
 	b = new(Button)
-	b.Size = size
 	b.Initialize()
+	// uik.Report(b.ID, "button")
+
+	b.Size = geom.Coord{70, 30}
 
 	// uik.Report(b.ID, "is button")
 
@@ -50,6 +52,7 @@ func (b *Button) Initialize() {
 		FontSize: 12,
 		Color:    color.Black,
 	})
+	// uik.Report(b.ID, "has label", b.Label.ID)
 	lbounds := b.Bounds()
 	lbounds.Min.X += 1
 	lbounds.Min.Y += 1
@@ -95,16 +98,13 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 
 func (b *Button) handleEvents() {
 
-	ld := <-b.Label.GetConfig
-	ld.Text = "pressing!"
-
 	for {
 		select {
-		case e := <-b.Events:
+		case e := <-b.UserEvents:
 			switch e := e.(type) {
 			case uik.MouseDownEvent:
 				b.pressed = true
-				b.Rebuffer()
+				b.Invalidate()
 			case uik.MouseUpEvent:
 				b.pressed = false
 				for c := range b.Clickers {
@@ -113,26 +113,26 @@ func (b *Button) handleEvents() {
 					default:
 					}
 				}
-				b.Rebuffer()
+				b.Invalidate()
 				// go uik.ShowBuffer("button buffer", b.Buffer)
 			case uik.ResizeEvent:
-				b.Foundation.HandleEvent(e)
+				if b.Size != e.Size {
+					b.Foundation.HandleEvent(e)
+				}
 				lbounds := b.Bounds()
 				lbounds.Min.X += 1
 				lbounds.Min.Y += 1
 				lbounds.Max.X -= 1
 				lbounds.Max.Y -= 1
 				b.ChildrenBounds[&b.Label.Block] = lbounds
-				b.Label.EventsIn <- uik.ResizeEvent{
+				b.Label.UserEventsIn <- uik.ResizeEvent{
 					Size: b.Size,
 				}
 			default:
 				b.Foundation.HandleEvent(e)
 			}
-		case e := <-b.Redraw:
-			b.DoRedraw(e)
-		case cbr := <-b.CompositeBlockRequests:
-			b.DoCompositeBlockRequest(cbr)
+		case <-b.BlockInvalidations:
+			b.Invalidate()
 		case c := <-b.AddClicker:
 			b.Clickers[c] = true
 		case c := <-b.RemoveClicker:
@@ -143,6 +143,8 @@ func (b *Button) handleEvents() {
 			sh := bsh.SizeHint
 			sh.PreferredSize.X += 10
 			sh.PreferredSize.Y += 10
+			sh.PreferredSize.X = math.Max(sh.PreferredSize.X, b.Size.X)
+			sh.PreferredSize.Y = math.Max(sh.PreferredSize.Y, b.Size.Y)
 			sh.MaxSize.X = math.Inf(1)
 			sh.MaxSize.Y = math.Inf(1)
 			b.SetSizeHint(sh)

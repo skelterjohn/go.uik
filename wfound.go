@@ -3,7 +3,6 @@ package uik
 import (
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.wde"
-	"image"
 	"image/draw"
 	"time"
 )
@@ -44,29 +43,27 @@ func (wf *WindowFoundation) Initialize() {
 
 	wf.waitForRepaint = make(chan bool)
 	wf.doRepaintWindow = make(chan bool)
+	wf.Invalidations = make(chan Invalidation, 1)
 
 	wf.Paint = ClearPaint
 
-	wf.Compositor = make(chan CompositeRequest)
+	// Report("wfound is", wf.ID)
+
 	wf.HasKeyFocus = true
 }
 
-func (wf *WindowFoundation) SetBlock(b *Block) {
+func (wf *WindowFoundation) SetPane(b *Block) {
 	if wf.Pane != nil {
 		wf.RemoveBlock(wf.Pane)
 	}
 	wf.Pane = b
+	// Report("pane", wf.ID, b.ID)
 	wf.PlaceBlock(b, geom.Rect{geom.Coord{}, wf.Size})
 }
 
 func (wf *WindowFoundation) Show() {
 	wf.W.Show()
-	wf.Redraw.Stack(RedrawEvent{
-		geom.Rect{
-			geom.Coord{0, 0},
-			wf.Size,
-		},
-	})
+	wf.Invalidate()
 }
 
 func (wf *WindowFoundation) HandleEvent(e interface{}) {
@@ -74,7 +71,7 @@ func (wf *WindowFoundation) HandleEvent(e interface{}) {
 	case ResizeEvent:
 		wf.DoResizeEvent(e)
 		if wf.Pane != nil {
-			wf.Pane.EventsIn.SendOrDrop(e)
+			wf.Pane.UserEventsIn.SendOrDrop(e)
 		}
 		wf.ChildrenBounds[wf.Pane] = geom.Rect{geom.Coord{}, e.Size}
 	default:
@@ -83,18 +80,16 @@ func (wf *WindowFoundation) HandleEvent(e interface{}) {
 }
 
 // dispense events to children, as appropriate
-func (wf *WindowFoundation) HandleEvents() {
-	for {
-		select {
-		case e := <-wf.Events:
-			wf.HandleEvent(e)
-		case e := <-wf.Redraw:
-			wf.DoRedraw(e)
-		case e := <-wf.CompositeBlockRequests:
-			wf.DoCompositeBlockRequest(e)
-		}
-	}
-}
+// func (wf *WindowFoundation) HandleEvents() {
+// 	for {
+// 		select {
+// 		case e := <-wf.UserEvents:
+// 			wf.HandleEvent(e)
+// 		case e := <-wf.BlockInvalidations:
+// 			wf.DoBlockInvalidation(e)
+// 		}
+// 	}
+// }
 
 // wraps mouse events with float64 coordinates
 func (wf *WindowFoundation) handleWindowEvents() {
@@ -104,12 +99,12 @@ func (wf *WindowFoundation) handleWindowEvents() {
 		}
 		switch e := e.(type) {
 		case wde.CloseEvent:
-			wf.EventsIn.SendOrDrop(CloseEvent{
+			wf.UserEventsIn.SendOrDrop(CloseEvent{
 				Event:      ev,
 				CloseEvent: e,
 			})
 		case wde.MouseDownEvent:
-			wf.EventsIn.SendOrDrop(MouseDownEvent{
+			wf.UserEventsIn.SendOrDrop(MouseDownEvent{
 				Event:          ev,
 				MouseDownEvent: e,
 				MouseLocator: MouseLocator{
@@ -118,7 +113,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 			})
 		case wde.MouseUpEvent:
 			// Report("wde.MouseUpEvent")
-			wf.EventsIn.SendOrDrop(MouseUpEvent{
+			wf.UserEventsIn.SendOrDrop(MouseUpEvent{
 				Event:        ev,
 				MouseUpEvent: e,
 				MouseLocator: MouseLocator{
@@ -126,24 +121,24 @@ func (wf *WindowFoundation) handleWindowEvents() {
 				},
 			})
 		case wde.KeyDownEvent:
-			wf.EventsIn.SendOrDrop(KeyDownEvent{
+			wf.UserEventsIn.SendOrDrop(KeyDownEvent{
 				Event:        ev,
 				KeyDownEvent: e,
 			})
 		case wde.KeyUpEvent:
-			wf.EventsIn.SendOrDrop(KeyUpEvent{
+			wf.UserEventsIn.SendOrDrop(KeyUpEvent{
 				Event:      ev,
 				KeyUpEvent: e,
 			})
 		case wde.KeyTypedEvent:
-			wf.EventsIn.SendOrDrop(KeyTypedEvent{
+			wf.UserEventsIn.SendOrDrop(KeyTypedEvent{
 				Event:         ev,
 				KeyTypedEvent: e,
 			})
 		case wde.ResizeEvent:
 			// Report(wf.ID, "wde.ResizeEvent")
 			wf.waitForRepaint <- true
-			wf.EventsIn.SendOrDrop(ResizeEvent{
+			wf.UserEventsIn.SendOrDrop(ResizeEvent{
 				Event:       ev,
 				ResizeEvent: e,
 				Size: geom.Coord{
@@ -151,10 +146,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 					Y: float64(e.Height),
 				},
 			})
-			wf.Redraw.Stack(RedrawEvent{
-				wf.Bounds(),
-			})
-			go wf.SleepRepaint(FrameDelay)
+			wf.Invalidate()
 		}
 	}
 }
@@ -178,13 +170,14 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 
 	for {
 		select {
-		case ce := <-wf.Compositor:
-			// Report("compositing to screen")
-			draw.Draw(wf.W.Screen(), ce.Buffer.Bounds(), ce.Buffer, image.Point{0, 0}, draw.Src)
+		case <-wf.Invalidations:
+			// Report("window invalidation")
 			if waitingForRepaint {
 				newStuff = true
 			} else {
-				flush()
+				waitingForRepaint = true
+				newStuff = true
+				go wf.SleepRepaint(FrameDelay)
 			}
 		case waitingForRepaint = <-wf.waitForRepaint:
 		case <-wf.doRepaintWindow:
@@ -192,6 +185,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 			if !newStuff {
 				break
 			}
+			wf.Pane.Drawer.Draw(wf.W.Screen())
 			flush()
 		}
 	}

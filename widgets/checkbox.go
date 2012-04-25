@@ -70,20 +70,18 @@ func (c *Checkbox) draw(gc draw2d.GraphicContext) {
 func (c *Checkbox) handleEvents() {
 	for {
 		select {
-		case e := <-c.Events:
+		case e := <-c.UserEvents:
 			switch e := e.(type) {
 			case uik.MouseDownEvent:
 				c.pressed = true
-				c.PaintAndComposite()
+				c.Invalidate()
 			case uik.MouseUpEvent:
 				c.pressed = false
 				c.state = !c.state
-				c.PaintAndComposite()
+				c.Invalidate()
 			default:
 				c.Block.HandleEvent(e)
 			}
-		case <-c.Redraw:
-			c.PaintAndComposite()
 		}
 	}
 }

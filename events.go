@@ -80,6 +80,10 @@ type KeyTypedEvent struct {
 	wde.KeyTypedEvent
 }
 
+type Invalidation struct {
+	Bounds geom.Rect
+}
+
 type RedrawEvent struct {
 	Bounds geom.Rect
 }

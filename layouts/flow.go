@@ -87,7 +87,7 @@ func (f *Flow) reflow() {
 		cbounds.Max.X = left + ratioX*csh.PreferredSize.X
 		f.ChildrenBounds[child] = cbounds
 
-		child.EventsIn <- uik.ResizeEvent{
+		child.UserEventsIn <- uik.ResizeEvent{
 			Size: geom.Coord{cbounds.Max.X - cbounds.Min.X, cbounds.Max.Y},
 		}
 		//fmt.Println("flow", cbounds.Width(), cbounds.Height())
@@ -100,7 +100,7 @@ func (f *Flow) reflow() {
 func (f *Flow) HandleEvents() {
 	for {
 		select {
-		case e := <-f.Events:
+		case e := <-f.UserEvents:
 			switch e := e.(type) {
 			case uik.ResizeEvent:
 				f.Size = e.Size
@@ -108,10 +108,8 @@ func (f *Flow) HandleEvents() {
 			default:
 				f.Foundation.HandleEvent(e)
 			}
-		case e := <-f.Redraw:
-			f.DoRedraw(e)
-		case e := <-f.CompositeBlockRequests:
-			f.DoCompositeBlockRequest(e)
+		case e := <-f.BlockInvalidations:
+			f.DoBlockInvalidation(e)
 	
 		case bsh := <-f.BlockSizeHints:
 
@@ -145,7 +143,7 @@ func (f *Flow) HandleEvents() {
 			f.childIndices[b] = f.count
 			f.count++
 
-			f.reflow()
+			// f.reflow()
 		case b := <-f.Remove:
 			i, ok := f.childIndices[b]
 			if !ok {

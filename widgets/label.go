@@ -29,7 +29,8 @@ type Label struct {
 func NewLabel(size geom.Coord, data LabelData) (l *Label) {
 	l = new(Label)
 	l.Initialize()
-	// uik.Report(l.ID, "is label")
+
+	// uik.Report(l.ID, "label")
 
 	l.Size = size
 	l.data = data
@@ -44,9 +45,9 @@ func NewLabel(size geom.Coord, data LabelData) (l *Label) {
 func (l *Label) Initialize() {
 	l.Block.Initialize()
 
-	l.setConfig = make(chan LabelData)
+	l.setConfig = make(chan LabelData, 1)
 	l.SetConfig = l.setConfig
-	l.getConfig = make(chan LabelData)
+	l.getConfig = make(chan LabelData, 1)
 	l.GetConfig = l.getConfig
 
 	l.Paint = func(gc draw2d.GraphicContext) {
@@ -69,10 +70,11 @@ func (l *Label) render() {
 }
 
 func (l *Label) draw(gc draw2d.GraphicContext) {
-	// gc.Clear()
-	gc.SetFillColor(color.RGBA{A: 1})
+	// uik.Report(l.ID, "Label.draw()")
+	//gc.Clear()
+	// gc.SetFillColor(color.RGBA{A: 1})
 	// safeRect(gc, geom.Coord{0, 0}, l.Size)
-	gc.Fill()
+	// gc.Fill()
 	tw := float64(l.tbuf.Bounds().Max.X - l.tbuf.Bounds().Min.X)
 	th := float64(l.tbuf.Bounds().Max.Y - l.tbuf.Bounds().Min.Y)
 	gc.Translate((l.Size.X-tw)/2, (l.Size.Y-th)/2)
@@ -82,11 +84,14 @@ func (l *Label) draw(gc draw2d.GraphicContext) {
 func (l *Label) handleEvents() {
 	for {
 		select {
-		case e := <-l.Events:
+		case e := <-l.UserEvents:
 			switch e := e.(type) {
 			case uik.ResizeEvent:
+				if l.Size == e.Size {
+					break
+				}
 				l.Block.HandleEvent(e)
-				l.PaintAndComposite()
+				l.Invalidate()
 				// go uik.ShowBuffer("label buffer", l.Buffer)
 			default:
 				l.HandleEvent(e)
@@ -97,11 +102,9 @@ func (l *Label) handleEvents() {
 			}
 			l.data = data
 			l.render()
-			l.PaintAndComposite()
+			l.Invalidate()
 			// go uik.ShowBuffer("label buffer", l.Buffer)
 		case l.getConfig <- l.data:
-		case <-l.Redraw:
-			l.PaintAndComposite()
 			// go uik.ShowBuffer("label buffer", l.Buffer)
 		}
 	}

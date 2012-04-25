@@ -3,9 +3,7 @@ package uik
 import (
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
-	"image"
 	"image/draw"
-	"runtime"
 )
 
 type BlockID int
@@ -22,6 +20,10 @@ func init() {
 	}()
 }
 
+type Drawer interface {
+	Draw(buffer draw.Image)
+}
+
 // The Block type is a basic unit that can receive events and draw itself.
 //
 // This struct essentially defines an interface, except a synchronous interface
@@ -32,17 +34,20 @@ type Block struct {
 
 	Parent *Foundation
 
-	EventsIn DropChan
-	Events   <-chan interface{}
+	UserEventsIn DropChan
+	UserEvents   <-chan interface{}
+
+	DrawEvents DropChan
+
 
 	Subscribe chan<- Subscription
 
-	Redraw RedrawEventChan
+	Drawer
 
 	Paint  func(gc draw2d.GraphicContext)
 	Buffer draw.Image
 
-	Compositor  CompositeRequestChan
+	Invalidations InvalidationChan
 	SizeHints   SizeHintChan
 	setSizeHint SizeHintChan
 
@@ -58,15 +63,27 @@ func (b *Block) Initialize() {
 	b.ID = <-blockIDs
 
 	b.Paint = ClearPaint
+	b.Drawer = b
 
-	b.EventsIn, b.Events, b.Subscribe = SubscriptionQueue(20)
-
-	b.Redraw = make(RedrawEventChan, 1)
+	b.UserEventsIn, b.UserEvents, b.Subscribe = SubscriptionQueue(20)
 
 	b.placementNotifications = make(placementNotificationChan, 1)
 	b.setSizeHint = make(SizeHintChan, 1)
 
 	go b.handleSizeHints()
+}
+
+func (b *Block) Draw(buffer draw.Image) {
+	// Report(b.ID, "Block.Draw()", buffer.Bounds())
+	gc := draw2d.NewGraphicContext(buffer)
+	b.DoPaint(gc)
+}
+
+func (b *Block) Invalidate() {
+	// Report(b.ID, "invalidation")
+	b.Invalidations.Stack(Invalidation{
+		Bounds: b.Bounds(),
+	})
 }
 
 func (b *Block) HandleEvent(e interface{}) {
@@ -103,47 +120,8 @@ func (b *Block) Bounds() geom.Rect {
 	}
 }
 
-func (b *Block) PrepareBuffer() (gc draw2d.GraphicContext) {
-	min := image.Point{0, 0}
-	max := image.Point{int(b.Size.X), int(b.Size.Y)}
-	if b.Buffer == nil || b.Buffer.Bounds().Min != min || b.Buffer.Bounds().Max != max {
-		// Report(b.ID, "making a buffer")
-		b.Buffer = image.NewRGBA(image.Rectangle{
-			Min: min,
-			Max: max,
-		})
-	}
-	gc = draw2d.NewGraphicContext(b.Buffer)
-	return
-}
-
 func (b *Block) DoPaint(gc draw2d.GraphicContext) {
 	if b.Paint != nil {
 		b.Paint(gc)
 	}
-}
-
-func copyImage(src image.Image) (dst image.Image) {
-	if false && runtime.GOMAXPROCS(0) == 1 {
-		dst = src
-		return
-	}
-
-	di := image.NewRGBA(src.Bounds())
-	dst = di
-
-	draw.Draw(di, dst.Bounds(), src, image.Point{0, 0}, draw.Over)
-
-	return
-}
-
-func (b *Block) PaintAndComposite() {
-	bgc := b.PrepareBuffer()
-	b.DoPaint(bgc)
-	if b.Compositor == nil {
-		return
-	}
-	CompositeRequestChan(b.Compositor).Stack(CompositeRequest{
-		Buffer: copyImage(b.Buffer),
-	})
 }

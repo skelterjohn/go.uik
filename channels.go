@@ -46,6 +46,22 @@ func (ch RedrawEventChan) Stack(e RedrawEvent) {
 	}
 }
 
+type InvalidationChan chan Invalidation
+
+func (ch InvalidationChan) Stack(e Invalidation) {
+	if ch == nil {
+		return
+	}
+	for {
+		select {
+		case ch <- e:
+			return
+		case ne := <-ch:
+			e.Bounds.ExpandToContainRect(ne.Bounds)
+		}
+	}
+}
+
 type placementNotificationChan chan placementNotification
 
 func (ch placementNotificationChan) Stack(e placementNotification) {

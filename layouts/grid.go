@@ -245,7 +245,7 @@ func (g *Grid) regrid() {
 		}
 
 		g.ChildrenBounds[bd.Block] = bounds
-		bd.Block.EventsIn <- uik.ResizeEvent{
+		bd.Block.UserEventsIn <- uik.ResizeEvent{
 			Size: geom.Coord{widths[bd.GridX], heights[bd.GridY]},
 		}
 	}
@@ -273,12 +273,12 @@ func (g *Grid) draw(gc draw2d.GraphicContext) {
 func (g *Grid) handleEvents() {
 	for {
 		select {
-		case e := <-g.Events:
+		case e := <-g.UserEvents:
 			switch e := e.(type) {
 			case uik.ResizeEvent:
 				g.Size = e.Size
 				g.regrid()
-				g.PaintAndComposite()
+				g.Invalidate()
 			default:
 				g.Foundation.HandleEvent(e)
 			}
@@ -290,10 +290,9 @@ func (g *Grid) handleEvents() {
 			g.childrenSizeHints[bsh.Block] = bsh.SizeHint
 
 			g.makePreferences()
-		case e := <-g.Redraw:
-			g.DoRedraw(e)
-		case e := <-g.CompositeBlockRequests:
-			g.DoCompositeBlockRequest(e)
+			g.Invalidate()
+		case e := <-g.BlockInvalidations:
+			g.DoBlockInvalidation(e)
 			// go uik.ShowBuffer("grid", g.Buffer)
 		case g.config = <-g.setConfig:
 			g.makePreferences()

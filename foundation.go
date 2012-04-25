@@ -1,6 +1,7 @@
 package uik
 
 import (
+	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.wde"
 	"image"
@@ -14,6 +15,11 @@ type CompositeBlockRequest struct {
 
 type BlockSizeHint struct {
 	SizeHint
+	Block *Block
+}
+
+type BlockInvalidation struct {
+	Invalidation
 	Block *Block
 }
 
@@ -33,6 +39,8 @@ type Foundation struct {
 	ChildrenHints  map[*Block]SizeHint
 	BlockSizeHints chan BlockSizeHint
 
+	BlockInvalidations chan BlockInvalidation
+
 	DragOriginBlocks map[wde.Button][]*Block
 
 	// this block currently has keyboard priority
@@ -42,25 +50,20 @@ type Foundation struct {
 func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.DrawOp = draw.Over
-	f.CompositeBlockRequests = make(chan CompositeBlockRequest)
-	f.BlockSizeHints = make(chan BlockSizeHint)
+	f.CompositeBlockRequests = make(chan CompositeBlockRequest, 1)
+	f.BlockSizeHints = make(chan BlockSizeHint, 1)
 	f.Children = map[*Block]bool{}
 	f.ChildrenBounds = map[*Block]geom.Rect{}
 	f.ChildrenLastBuffers = map[*Block]image.Image{}
+	f.BlockInvalidations = make(chan BlockInvalidation, 1)
 	f.DragOriginBlocks = map[wde.Button][]*Block{}
+	f.Drawer = f
 }
 
 func (f *Foundation) RemoveBlock(b *Block) {
 	if b.Parent != f {
 		// TODO: log
 		return
-	}
-	close(b.Compositor)
-	b.Compositor = nil
-	if bounds, ok := f.ChildrenBounds[b]; ok {
-		RedrawEventChan(f.Redraw).Stack(RedrawEvent{
-			bounds,
-		})
 	}
 	delete(f.Children, b)
 	delete(f.ChildrenBounds, b)
@@ -69,6 +72,7 @@ func (f *Foundation) RemoveBlock(b *Block) {
 }
 
 func (f *Foundation) AddBlock(b *Block) {
+	// Report(f.ID, "adding", b.ID)
 	if b.Parent == nil {
 		f.Children[b] = true
 	} else if b.Parent != f {
@@ -77,16 +81,16 @@ func (f *Foundation) AddBlock(b *Block) {
 	}
 
 	b.Parent = f
-
-	b.Compositor = make(CompositeRequestChan, 1)
-	go func(b *Block, blockCompositor chan CompositeRequest) {
-		for cr := range blockCompositor {
-			f.CompositeBlockRequests <- CompositeBlockRequest{
-				CompositeRequest: cr,
+	// Report("invalidation link", b.ID, "->", f.ID)
+	b.Invalidations = make(InvalidationChan, 1)
+	go func(b *Block, blockInvalidator chan Invalidation) {
+		for inv := range blockInvalidator {
+			f.BlockInvalidations <- BlockInvalidation{
+				Invalidation: 	inv,
 				Block:            b,
 			}
 		}
-	}(b, b.Compositor)
+	}(b, b.Invalidations)
 
 	sizeHints := make(SizeHintChan, 1)
 	go func(b *Block, sizeHints chan SizeHint) {
@@ -105,12 +109,10 @@ func (f *Foundation) AddBlock(b *Block) {
 }
 
 func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
+	// Report(f.ID, "placing", b.ID)
 	f.AddBlock(b)
 	f.ChildrenBounds[b] = bounds
-	RedrawEventChan(f.Redraw).Stack(RedrawEvent{
-		bounds,
-	})
-	b.EventsIn.SendOrDrop(ResizeEvent{
+	b.UserEventsIn.SendOrDrop(ResizeEvent{
 		Size: geom.Coord{bounds.Max.X - bounds.Min.X, bounds.Max.Y - bounds.Min.Y},
 	})
 }
@@ -147,68 +149,26 @@ func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 
 // drawing
 
-func (f *Foundation) CompositeBlockBuffer(b *Block, buf image.Image) (composited bool) {
-	// Report(f.ID, "composite", b.ID, "using", f.DrawOp)
-	bounds, ok := f.ChildrenBounds[b]
-	if !ok {
-		composited = false
-		return
+func (f *Foundation) Draw(buffer draw.Image) {
+	// Report(f.ID, "Foundation.Draw()", buffer.Bounds())
+	gc := draw2d.NewGraphicContext(buffer)
+	f.DoPaint(gc)
+	for child, bounds := range f.ChildrenBounds {
+		r := RectangleForRect(bounds)
+		var subbuffer draw.Image
+		// subbuffer = buffer.(*image.RGBA).SubImage(r).(draw.Image)
+		or := image.Rectangle{
+			Max: image.Point{int(child.Size.X), int(child.Size.Y)},
+		}
+		subbuffer = image.NewRGBA(or)
+		child.Drawer.Draw(subbuffer)
+		draw.Draw(buffer, r, subbuffer, image.Point{0, 0}, draw.Over)
 	}
-	f.PrepareBuffer()
-	// dstOffset := image.Point{
-	// 	int(bounds.Min.X),
-	// 	int(bounds.Min.Y),
-	// }
-	// copyRGBA(f.Buffer.(*image.RGBA), dstOffset, buf.(*image.RGBA))
-	draw.Draw(f.Buffer, RectangleForRect(bounds), buf, image.Point{0, 0}, f.DrawOp)
-	composited = true
-	return
 }
 
-func (f *Foundation) DoCompositeBlockRequest(cbr CompositeBlockRequest) {
-	// Report(f.ID, "cbr", cbr.Block.ID)
-	f.ChildrenLastBuffers[cbr.Block] = cbr.Buffer
-	f.Rebuffer()
-}
-
-func (f *Foundation) Rebuffer() {
-	// Report(f.ID, "rebuffer")
-	bgc := f.PrepareBuffer()
-	bgc.Clear()
-	f.DoPaint(bgc)
-	for child, buf := range f.ChildrenLastBuffers {
-		f.CompositeBlockBuffer(child, buf)
-	}
-	f.Compositor.Stack(CompositeRequest{
-		Buffer: copyImage(f.Buffer),
-	})
-}
-
-func (f *Foundation) DoRedraw(e RedrawEvent) {
-	// Report(f.ID, "redraw")
-	bgc := f.PrepareBuffer()
-	f.DoPaint(bgc)
-	for child := range f.Children {
-		bbs, ok := f.ChildrenBounds[child]
-		if !ok {
-			continue
-		}
-
-		if buf, ok := f.ChildrenLastBuffers[child]; ok {
-			f.CompositeBlockBuffer(child, buf)
-		} else {
-			translatedDirty := e.Bounds
-			translatedDirty.Min.X -= bbs.Min.X
-			translatedDirty.Min.Y -= bbs.Min.Y
-
-			child.Redraw.Stack(RedrawEvent{translatedDirty})
-		}
-	}
-	if f.Compositor != nil {
-		f.Compositor <- CompositeRequest{
-			Buffer: f.Buffer,
-		}
-	}
+func (f *Foundation) DoBlockInvalidation(e BlockInvalidation) {
+	// Report(f.ID, "invalidation from", e.Block.ID)
+	f.Invalidate()
 }
 
 // internal events
@@ -218,7 +178,7 @@ func (f *Foundation) DoResizeEvent(e ResizeEvent) {
 		return
 	}
 	f.Size = e.Size
-	f.Rebuffer()
+	f.Invalidate()
 }
 
 func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
@@ -229,20 +189,20 @@ func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
 		return
 	}
 	if e.Block != f.KeyFocus && f.KeyFocus != nil {
-		f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
+		f.KeyFocus.UserEventsIn.SendOrDrop(KeyFocusEvent{
 			Focus: false,
 		})
 	}
 	f.KeyFocus = e.Block
 	if f.HasKeyFocus {
 		if f.KeyFocus != nil {
-			f.KeyFocus.EventsIn.SendOrDrop(KeyFocusEvent{
+			f.KeyFocus.UserEventsIn.SendOrDrop(KeyFocusEvent{
 				Focus: true,
 			})
 		}
 	} else {
 		if f.Parent != nil {
-			f.Parent.EventsIn.SendOrDrop(KeyFocusRequest{
+			f.Parent.UserEventsIn.SendOrDrop(KeyFocusRequest{
 				Block: &f.Block,
 			})
 		}
@@ -274,12 +234,10 @@ func (f *Foundation) HandleEvent(e interface{}) {
 func (f *Foundation) HandleEvents() {
 	for {
 		select {
-		case e := <-f.Events:
+		case e := <-f.UserEvents:
 			f.HandleEvent(e)
-		case e := <-f.Redraw:
-			f.DoRedraw(e)
-		case e := <-f.CompositeBlockRequests:
-			f.DoCompositeBlockRequest(e)
+		case e := <-f.BlockInvalidations:
+			f.DoBlockInvalidation(e)
 		}
 	}
 }
@@ -292,7 +250,7 @@ func (f *Foundation) DoKeyFocusEvent(e KeyFocusEvent) {
 	}
 	f.HasKeyFocus = e.Focus
 	if f.KeyFocus != nil {
-		f.KeyFocus.EventsIn.SendOrDrop(e)
+		f.KeyFocus.UserEventsIn.SendOrDrop(e)
 	}
 }
 
@@ -300,7 +258,7 @@ func (f *Foundation) DoKeyEvent(e interface{}) {
 	if f.KeyFocus == nil {
 		return
 	}
-	f.KeyFocus.EventsIn.SendOrDrop(e)
+	f.KeyFocus.UserEventsIn.SendOrDrop(e)
 }
 
 func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
@@ -312,7 +270,7 @@ func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 		f.DragOriginBlocks[e.Which] = append(f.DragOriginBlocks[e.Which], b)
 		e.Loc.X -= bbs.Min.X
 		e.Loc.Y -= bbs.Min.Y
-		b.EventsIn.SendOrDrop(e)
+		b.UserEventsIn.SendOrDrop(e)
 	})
 }
 
@@ -325,7 +283,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			be := e
 			be.Loc.X -= bbs.Min.X
 			be.Loc.Y -= bbs.Min.Y
-			b.EventsIn.SendOrDrop(be)
+			b.UserEventsIn.SendOrDrop(be)
 		}
 	})
 	if origins, ok := f.DragOriginBlocks[e.Which]; ok {
@@ -337,7 +295,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 			obbs := f.ChildrenBounds[origin]
 			oe.Loc.X -= obbs.Min.X
 			oe.Loc.Y -= obbs.Min.Y
-			origin.EventsIn.SendOrDrop(oe)
+			origin.UserEventsIn.SendOrDrop(oe)
 		}
 	}
 	delete(f.DragOriginBlocks, e.Which)
@@ -345,6 +303,6 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 
 func (f *Foundation) DoCloseEvent(e CloseEvent) {
 	for b := range f.Children {
-		b.EventsIn.SendOrDrop(e)
+		b.UserEventsIn.SendOrDrop(e)
 	}
 }
