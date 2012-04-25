@@ -12,7 +12,7 @@ type Checker chan bool
 type Checkbox struct {
 	uik.Block
 
-	state, pressed bool
+	state, pressed, pressHover bool
 }
 
 func NewCheckbox(size geom.Coord) (c *Checkbox) {
@@ -39,7 +39,11 @@ func (c *Checkbox) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
 	gc.SetStrokeColor(color.Black)
 	if c.pressed {
-		gc.SetFillColor(color.RGBA{155, 0, 0, 255})
+		if c.pressHover {
+			gc.SetFillColor(color.RGBA{200, 0, 0, 255})
+		} else {
+			gc.SetFillColor(color.RGBA{155, 0, 0, 255})
+		}
 	} else {
 		gc.SetFillColor(color.RGBA{255, 0, 0, 255})
 	}
@@ -74,11 +78,26 @@ func (c *Checkbox) handleEvents() {
 			switch e := e.(type) {
 			case uik.MouseDownEvent:
 				c.pressed = true
+				c.pressHover = true
 				c.Invalidate()
 			case uik.MouseUpEvent:
+				if c.pressHover {
+					c.state = !c.state
+					c.Invalidate()
+				}
+				c.pressHover = false
 				c.pressed = false
-				c.state = !c.state
-				c.Invalidate()
+			case uik.MouseDraggedEvent:
+				if !c.pressed {
+					break
+				}
+				hover := c.Bounds().ContainsCoord(e.Where())
+				// uik.Report(c.ID, "mde")
+				if hover != c.pressHover {
+					c.pressHover = hover
+					c.Invalidate()
+					// uik.Report("invalidate pressHover")
+				}
 			default:
 				c.Block.HandleEvent(e)
 			}

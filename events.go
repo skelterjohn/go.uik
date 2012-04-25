@@ -3,7 +3,6 @@ package uik
 import (
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.wde"
-	"image"
 	"time"
 )
 
@@ -82,14 +81,6 @@ type KeyTypedEvent struct {
 
 type Invalidation struct {
 	Bounds geom.Rect
-}
-
-type RedrawEvent struct {
-	Bounds geom.Rect
-}
-
-type CompositeRequest struct {
-	Buffer image.Image
 }
 
 type SizeHint struct {

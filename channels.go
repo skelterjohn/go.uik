@@ -1,20 +1,5 @@
 package uik
 
-type CompositeRequestChan chan CompositeRequest
-
-func (ch CompositeRequestChan) Stack(cr CompositeRequest) {
-	if ch == nil {
-		return
-	}
-	for {
-		select {
-		case ch <- cr:
-			return
-		case <-ch:
-		}
-	}
-}
-
 type SizeHintChan chan SizeHint
 
 func (ch SizeHintChan) Stack(sh SizeHint) {
@@ -26,22 +11,6 @@ func (ch SizeHintChan) Stack(sh SizeHint) {
 		case ch <- sh:
 			return
 		case <-ch:
-		}
-	}
-}
-
-type RedrawEventChan chan RedrawEvent
-
-func (ch RedrawEventChan) Stack(e RedrawEvent) {
-	if ch == nil {
-		return
-	}
-	for {
-		select {
-		case ch <- e:
-			return
-		case ne := <-ch:
-			e.Bounds.ExpandToContainRect(ne.Bounds)
 		}
 	}
 }

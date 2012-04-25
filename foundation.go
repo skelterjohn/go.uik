@@ -8,11 +8,6 @@ import (
 	"image/draw"
 )
 
-type CompositeBlockRequest struct {
-	CompositeRequest
-	Block *Block
-}
-
 type BlockSizeHint struct {
 	SizeHint
 	Block *Block
@@ -34,8 +29,6 @@ type Foundation struct {
 	ChildrenBounds      map[*Block]geom.Rect
 	ChildrenLastBuffers map[*Block]image.Image
 
-	CompositeBlockRequests chan CompositeBlockRequest
-
 	ChildrenHints  map[*Block]SizeHint
 	BlockSizeHints chan BlockSizeHint
 
@@ -50,7 +43,6 @@ type Foundation struct {
 func (f *Foundation) Initialize() {
 	f.Block.Initialize()
 	f.DrawOp = draw.Over
-	f.CompositeBlockRequests = make(chan CompositeBlockRequest, 1)
 	f.BlockSizeHints = make(chan BlockSizeHint, 1)
 	f.Children = map[*Block]bool{}
 	f.ChildrenBounds = map[*Block]geom.Rect{}
@@ -86,8 +78,8 @@ func (f *Foundation) AddBlock(b *Block) {
 	go func(b *Block, blockInvalidator chan Invalidation) {
 		for inv := range blockInvalidator {
 			f.BlockInvalidations <- BlockInvalidation{
-				Invalidation: 	inv,
-				Block:            b,
+				Invalidation: inv,
+				Block:        b,
 			}
 		}
 	}(b, b.Invalidations)
@@ -217,6 +209,8 @@ func (f *Foundation) HandleEvent(e interface{}) {
 		f.DoMouseDownEvent(e)
 	case MouseUpEvent:
 		f.DoMouseUpEvent(e)
+	case MouseDraggedEvent:
+		f.DoMouseDraggedEvent(e)
 	case ResizeEvent:
 		f.DoResizeEvent(e)
 	case KeyFocusEvent:
@@ -268,6 +262,7 @@ func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 			return
 		}
 		f.DragOriginBlocks[e.Which] = append(f.DragOriginBlocks[e.Which], b)
+		// Report(f.ID, "mouse origin", b.ID)
 		e.Loc.X -= bbs.Min.X
 		e.Loc.Y -= bbs.Min.Y
 		b.UserEventsIn.SendOrDrop(e)
@@ -299,6 +294,40 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 		}
 	}
 	delete(f.DragOriginBlocks, e.Which)
+}
+
+func (f *Foundation) DoMouseDraggedEvent(e MouseDraggedEvent) {
+	// Report(f.ID, "mde")
+	touched := map[*Block]bool{}
+	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
+		touched[b] = true
+		bbs := f.ChildrenBounds[b]
+		if b != nil {
+			be := e
+			be.Loc.X -= bbs.Min.X
+			be.Loc.Y -= bbs.Min.Y
+			be.From.X -= bbs.Min.X
+			be.From.Y -= bbs.Min.Y
+			// Report(f.ID, "forward", b.ID)
+			b.UserEventsIn.SendOrDrop(be)
+		}
+	})
+	if origins, ok := f.DragOriginBlocks[e.Which]; ok {
+		for _, origin := range origins {
+			if touched[origin] {
+				// Report(f.ID, "skip", origin.ID)
+				continue
+			}
+			// Report(f.ID, "origin forward", origin.ID)
+			oe := e
+			obbs := f.ChildrenBounds[origin]
+			oe.Loc.X -= obbs.Min.X
+			oe.Loc.Y -= obbs.Min.Y
+			oe.From.X -= obbs.Min.X
+			oe.From.Y -= obbs.Min.Y
+			origin.UserEventsIn.SendOrDrop(oe)
+		}
+	}
 }
 
 func (f *Foundation) DoCloseEvent(e CloseEvent) {

@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// FrameDelay is how long the window will wait, after receiving an invalidation, to
+// redraw the window. This gives related updates a chance to get ready. If they take
+// too long, they'll just have to wait for the next frame.
 const FrameDelay = 17 * time.Millisecond
 
 // A foundation that wraps a wde.Window
@@ -119,6 +122,15 @@ func (wf *WindowFoundation) handleWindowEvents() {
 				MouseLocator: MouseLocator{
 					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
 				},
+			})
+		case wde.MouseDraggedEvent:
+			wf.UserEventsIn.SendOrDrop(MouseDraggedEvent{
+				Event:             ev,
+				MouseDraggedEvent: e,
+				MouseLocator: MouseLocator{
+					Loc: geom.Coord{float64(e.Where.X), float64(e.Where.Y)},
+				},
+				From: geom.Coord{float64(e.From.X), float64(e.From.Y)},
 			})
 		case wde.KeyDownEvent:
 			wf.UserEventsIn.SendOrDrop(KeyDownEvent{
