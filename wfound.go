@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const FrameDelay = 15 * time.Millisecond
+const FrameDelay = 17 * time.Millisecond
 
 // A foundation that wraps a wde.Window
 type WindowFoundation struct {
@@ -136,8 +136,6 @@ func (wf *WindowFoundation) handleWindowEvents() {
 				KeyTypedEvent: e,
 			})
 		case wde.ResizeEvent:
-			// Report(wf.ID, "wde.ResizeEvent")
-			wf.waitForRepaint <- true
 			wf.UserEventsIn.SendOrDrop(ResizeEvent{
 				Event:       ev,
 				ResizeEvent: e,
@@ -164,14 +162,11 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 	flush := func() {
 		wf.W.FlushImage()
 		newStuff = false
-		waitingForRepaint = true
-		go wf.SleepRepaint(FrameDelay)
 	}
 
 	for {
 		select {
 		case <-wf.Invalidations:
-			// Report("window invalidation")
 			if waitingForRepaint {
 				newStuff = true
 			} else {
@@ -179,13 +174,14 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				newStuff = true
 				go wf.SleepRepaint(FrameDelay)
 			}
-		case waitingForRepaint = <-wf.waitForRepaint:
+
 		case <-wf.doRepaintWindow:
 			waitingForRepaint = false
 			if !newStuff {
 				break
 			}
-			wf.Pane.Drawer.Draw(wf.W.Screen())
+			scr := wf.W.Screen()
+			wf.Pane.Drawer.Draw(scr)
 			flush()
 		}
 	}
