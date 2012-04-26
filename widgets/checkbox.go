@@ -37,7 +37,6 @@ func NewCheckbox(size geom.Coord) (c *Checkbox) {
 
 func (c *Checkbox) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
-	gc.SetStrokeColor(color.Black)
 	if c.pressed {
 		if c.pressHover {
 			gc.SetFillColor(color.RGBA{200, 0, 0, 255})
@@ -55,7 +54,7 @@ func (c *Checkbox) draw(gc draw2d.GraphicContext) {
 	gc.LineTo(c.Size.X, c.Size.Y)
 	gc.LineTo(0, c.Size.Y)
 	gc.Close()
-	gc.FillStroke()
+	gc.Fill()
 
 	// Draw inner rect
 	if c.state {
@@ -65,7 +64,7 @@ func (c *Checkbox) draw(gc draw2d.GraphicContext) {
 		gc.LineTo(c.Size.X-5, c.Size.Y-5)
 		gc.LineTo(5, c.Size.Y-5)
 		gc.Close()
-		gc.FillStroke()
+		gc.Fill()
 	}
 
 	gc.MoveTo(x, y)

@@ -22,9 +22,8 @@ type Flow struct {
 	Remove chan *uik.Block
 }
 
-func NewFlow(size geom.Coord) (f *Flow) {
+func NewFlow() (f *Flow) {
 	f = new(Flow)
-	f.Size = size
 	f.Initialize()
 
 	go f.HandleEvents()
@@ -110,7 +109,7 @@ func (f *Flow) HandleEvents() {
 			}
 		case e := <-f.BlockInvalidations:
 			f.DoBlockInvalidation(e)
-	
+
 		case bsh := <-f.BlockSizeHints:
 
 			if !f.Children[bsh.Block] {

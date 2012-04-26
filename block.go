@@ -39,17 +39,16 @@ type Block struct {
 
 	DrawEvents DropChan
 
-
 	Subscribe chan<- Subscription
 
 	Drawer
 	buffer draw.Image
 
-	Paint  func(gc draw2d.GraphicContext)
+	Paint func(gc draw2d.GraphicContext)
 
 	Invalidations InvalidationChan
-	SizeHints   SizeHintChan
-	setSizeHint SizeHintChan
+	SizeHints     SizeHintChan
+	setSizeHint   SizeHintChan
 
 	placementNotifications placementNotificationChan
 

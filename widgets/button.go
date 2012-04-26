@@ -84,15 +84,15 @@ func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
 func (b *Button) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
 
-	gc.SetStrokeColor(color.Black)
+	// gc.SetStrokeColor(color.Black)
 	if b.pressed {
 		gc.SetFillColor(color.RGBA{150, 150, 150, 255})
 		safeRect(gc, geom.Coord{0, 0}, b.Size)
-		gc.FillStroke()
+		gc.Fill()
 	} else {
 		gc.SetFillColor(color.RGBA{200, 200, 200, 255})
 		safeRect(gc, geom.Coord{0, 0}, b.Size)
-		gc.FillStroke()
+		gc.Fill()
 	}
 }
 
