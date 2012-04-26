@@ -198,14 +198,12 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 	waitingForRepaint := false
 	newStuff := false
 
-	flush := func() {
-		wf.W.FlushImage()
-		newStuff = false
-	}
+	var invalidRects RectSet
 
 	for {
 		select {
-		case <-wf.Invalidations:
+		case inv := <-wf.Invalidations:
+			invalidRects = append(invalidRects, inv.Bounds)
 			if waitingForRepaint {
 				newStuff = true
 			} else {
@@ -220,8 +218,10 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				break
 			}
 			scr := wf.W.Screen()
-			wf.Pane.Drawer.Draw(scr)
-			flush()
+			wf.Pane.Drawer.Draw(scr, invalidRects)
+			invalidRects = invalidRects[:0]
+			wf.W.FlushImage()
+			newStuff = false
 		}
 	}
 }

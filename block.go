@@ -21,7 +21,7 @@ func init() {
 }
 
 type Drawer interface {
-	Draw(buffer draw.Image)
+	Draw(buffer draw.Image, invalidRects RectSet)
 }
 
 // The Block type is a basic unit that can receive events and draw itself.
@@ -43,9 +43,9 @@ type Block struct {
 	Subscribe chan<- Subscription
 
 	Drawer
+	buffer draw.Image
 
 	Paint  func(gc draw2d.GraphicContext)
-	Buffer draw.Image
 
 	Invalidations InvalidationChan
 	SizeHints   SizeHintChan
@@ -73,7 +73,7 @@ func (b *Block) Initialize() {
 	go b.handleSizeHints()
 }
 
-func (b *Block) Draw(buffer draw.Image) {
+func (b *Block) Draw(buffer draw.Image, invalidRects RectSet) {
 	// Report(b.ID, "Block.Draw()", buffer.Bounds())
 	gc := draw2d.NewGraphicContext(buffer)
 	b.DoPaint(gc)

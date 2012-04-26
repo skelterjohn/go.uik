@@ -24,3 +24,32 @@ func RectangleForRect(b geom.Rect) (r image.Rectangle) {
 	r.Max.Y = int(b.Max.Y)
 	return
 }
+
+type RectSet []geom.Rect
+
+func (rs RectSet) Translate(offset geom.Coord) (nrs RectSet) {
+	nrs = make(RectSet, len(rs))
+	for i, r := range rs {
+		nrs[i] = r
+		nrs[i].Translate(offset)
+	}
+	return
+}
+
+func (rs RectSet) Intersection(r geom.Rect) (nrs RectSet) {
+	for _, x := range rs {
+		if geom.RectsIntersect(x, r) {
+			nrs = append(nrs, x)
+		}
+	}
+	return
+}
+
+func (rs RectSet) Intersects(r geom.Rect) bool {
+	for _, x := range rs {
+		if geom.RectsIntersect(x, r) {
+			return true
+		}
+	}
+	return false
+}

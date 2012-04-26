@@ -57,7 +57,6 @@ func (l *Label) Initialize() {
 
 func (l *Label) render() {
 	l.tbuf = uik.RenderString(l.data.Text, uik.DefaultFontData, l.data.FontSize, l.data.Color)
-	l.Buffer = nil
 	s := geom.Coord{float64(l.tbuf.Bounds().Max.X), float64(l.tbuf.Bounds().Max.Y)}
 
 	// go uik.ShowBuffer("label text render", l.tbuf)

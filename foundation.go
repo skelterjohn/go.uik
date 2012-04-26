@@ -141,26 +141,45 @@ func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 
 // drawing
 
-func (f *Foundation) Draw(buffer draw.Image) {
+func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 	// Report(f.ID, "Foundation.Draw()", buffer.Bounds())
 	gc := draw2d.NewGraphicContext(buffer)
 	f.DoPaint(gc)
 	for child, bounds := range f.ChildrenBounds {
 		r := RectangleForRect(bounds)
-		var subbuffer draw.Image
-		// subbuffer = buffer.(*image.RGBA).SubImage(r).(draw.Image)
-		or := image.Rectangle{
-			Max: image.Point{int(child.Size.X), int(child.Size.Y)},
+
+		// only redraw those that have been invalidated or are
+		// otherwise unable to draw themselves
+		if child.buffer == nil || invalidRects.Intersects(bounds) {
+			or := image.Rectangle{
+				Max: image.Point{int(child.Size.X), int(child.Size.Y)},
+			}
+			if child.buffer == nil || child.buffer.Bounds() != or {
+				child.buffer = image.NewRGBA(or)
+			} else {
+				ZeroRGBA(child.buffer.(*image.RGBA))
+			}
+
+			subInv := invalidRects.Intersection(bounds)
+			subInv = subInv.Translate(bounds.Min.Times(-1))
+
+			child.Drawer.Draw(child.buffer, subInv)
 		}
-		subbuffer = image.NewRGBA(or)
-		child.Drawer.Draw(subbuffer)
-		draw.Draw(buffer, r, subbuffer, image.Point{0, 0}, draw.Over)
+
+		draw.Draw(buffer, r, child.buffer, image.Point{0, 0}, draw.Over)
 	}
 }
 
 func (f *Foundation) DoBlockInvalidation(e BlockInvalidation) {
-	// Report(f.ID, "invalidation from", e.Block.ID)
-	f.Invalidate()
+	cbounds, ok := f.ChildrenBounds[e.Block]
+	if !ok {
+		return
+	}
+	invBounds := e.Bounds
+	invBounds.Translate(cbounds.Min)
+	f.Invalidations.Stack(Invalidation{
+		Bounds: invBounds,
+	})
 }
 
 // internal events

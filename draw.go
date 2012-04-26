@@ -15,27 +15,15 @@ func ClearPaint(gc draw2d.GraphicContext) {
 	gc.Fill()
 }
 
-func copyRGBA(dst *image.RGBA, dstOffset image.Point, src *image.RGBA) {
-	colMax := src.Rect.Max.X
-	if colMax+dstOffset.X > dst.Rect.Max.X {
-		colMax = dst.Rect.Max.X - dstOffset.X
+func ZeroRGBA(rgba *image.RGBA) {
+	for y := rgba.Rect.Min.Y; y < rgba.Rect.Max.Y; y++ {
+		rowStart := (y-rgba.Rect.Min.Y)*rgba.Stride - rgba.Rect.Min.X*4
+		rowEnd := rowStart + (rgba.Rect.Max.X-rgba.Rect.Min.X)*4
+		row := rgba.Pix[rowStart:rowEnd]
+		for i := range row {
+			row[i] = 0
+		}
 	}
-	rowMax := src.Rect.Max.Y
-	if rowMax+dstOffset.Y > dst.Rect.Max.Y {
-		rowMax = dst.Rect.Max.Y - dstOffset.Y
-	}
-
-	for row := 0; row < rowMax; row++ {
-		srcBegin := row * src.Stride
-		srcEnd := srcBegin + 4*colMax
-
-		srcPix := src.Pix[srcBegin:srcEnd]
-		dstBegin := (row+dstOffset.Y)*dst.Stride + dstOffset.X*4
-		dstEnd := dstBegin + 4*colMax
-		dstPix := dst.Pix[dstBegin:dstEnd]
-		copy(dstPix, srcPix)
-	}
-	return
 }
 
 func ShowBuffer(title string, buffer image.Image) {
