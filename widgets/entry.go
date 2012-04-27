@@ -135,11 +135,19 @@ func (e *Entry) draw(gc draw2d.GraphicContext) {
 	if e.HasKeyFocus {
 		un := time.Duration(time.Now().UnixNano())
 		ms := un / time.Millisecond
-		ms = 10000 - (ms % 1000)
-		intensity := uint8((ms * 255) / 1000)
+		ms = ms % 750
+		var intensity uint8 = 255
+		if ms > 550 {
+			diff := 650 - ms
+			if diff < 0 {
+				diff *= -1
+			}
+			intensity = uint8((diff * 255) / 200)
+		}
+		offset := float64(int(e.runeOffsets[e.cursor] + e.textOffset))
 		gc.SetStrokeColor(color.RGBA{A: intensity})
-		gc.MoveTo(e.runeOffsets[e.cursor]+e.textOffset, 0)
-		gc.LineTo(e.runeOffsets[e.cursor]+e.textOffset, e.Size.Y)
+		gc.MoveTo(offset, 0)
+		gc.LineTo(offset, e.Size.Y)
 		gc.Stroke()
 		e.Invalidate()
 	}
@@ -181,8 +189,8 @@ func (e *Entry) handleEvents() {
 					break
 				}
 				newSelectCursor := e.cursorForCoord(ev.Loc)
-				if e.selectCursor != newSelectCursor {
-					e.selectCursor = newSelectCursor
+				if e.cursor != newSelectCursor {
+					e.cursor = newSelectCursor
 					e.Invalidate()
 				}
 			case uik.KeyTypedEvent:
