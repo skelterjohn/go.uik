@@ -6,20 +6,21 @@ import (
 	"github.com/skelterjohn/go.uik"
 	"image"
 	"image/color"
+	"time"
 )
 
 type Entry struct {
 	uik.Block
-	textBuffer  *image.RGBA
-	text        []rune
-	runeOffsets []float64
-	cursor      int
+	textBuffer   *image.RGBA
+	text         []rune
+	runeOffsets  []float64
+	cursor       int
 	selectCursor int
-	selecting bool
-	selected bool
-	textOffset  float64
-	fd          draw2d.FontData
-	fontSize    float64
+	selecting    bool
+	selected     bool
+	textOffset   float64
+	fd           draw2d.FontData
+	fontSize     float64
 }
 
 func NewEntry(size geom.Coord) (e *Entry) {
@@ -100,10 +101,10 @@ func (e *Entry) GrabFocus() {
 
 func (e *Entry) draw(gc draw2d.GraphicContext) {
 	if e.textOffset+e.runeOffsets[e.cursor] < 5 {
-		e.textOffset = 5-e.runeOffsets[e.cursor]
+		e.textOffset = 5 - e.runeOffsets[e.cursor]
 	}
 	if e.textOffset+e.runeOffsets[e.cursor] > e.Size.X-5 {
-		e.textOffset = e.Size.X-5-e.runeOffsets[e.cursor]
+		e.textOffset = e.Size.X - 5 - e.runeOffsets[e.cursor]
 	}
 
 	gc.Clear()
@@ -132,10 +133,15 @@ func (e *Entry) draw(gc draw2d.GraphicContext) {
 	gc.DrawImage(e.textBuffer)
 	gc.Restore()
 	if e.HasKeyFocus {
-		gc.SetStrokeColor(color.Black)
+		un := time.Duration(time.Now().UnixNano())
+		ms := un / time.Millisecond
+		ms = 10000 - (ms % 1000)
+		intensity := uint8((ms * 255) / 1000)
+		gc.SetStrokeColor(color.RGBA{A: intensity})
 		gc.MoveTo(e.runeOffsets[e.cursor]+e.textOffset, 0)
 		gc.LineTo(e.runeOffsets[e.cursor]+e.textOffset, e.Size.Y)
 		gc.Stroke()
+		e.Invalidate()
 	}
 }
 
@@ -196,14 +202,14 @@ func (e *Entry) handleEvents() {
 					e.text = append(e.text, head...)
 					e.text = append(e.text, []rune(ev.Letter)[0])
 					e.text = append(e.text, tail...)
-					e.cursor = start+1
+					e.cursor = start + 1
 				} else {
 					switch ev.Code {
 					case uik.KeyBackspace:
 						if len(e.text) == 0 {
 							break
 						}
-						if !e.selecting && e.cursor ==0 {
+						if !e.selecting && e.cursor == 0 {
 							break
 						}
 						start, end := e.cursor-1, e.cursor
