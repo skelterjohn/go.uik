@@ -3,6 +3,7 @@ package uik
 import (
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.wde"
+	"image"
 	"image/draw"
 	"time"
 )
@@ -10,7 +11,7 @@ import (
 // FrameDelay is how long the window will wait, after receiving an invalidation, to
 // redraw the window. This gives related updates a chance to get ready. If they take
 // too long, they'll just have to wait for the next frame.
-const FrameDelay = 17 * time.Millisecond
+const FrameDelay = 50 * time.Millisecond
 
 // A foundation that wraps a wde.Window
 type WindowFoundation struct {
@@ -218,7 +219,9 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				break
 			}
 			scr := wf.W.Screen()
-			wf.Pane.Drawer.Draw(scr, invalidRects)
+			scrBuf := image.NewRGBA(scr.Bounds())
+			wf.Pane.Drawer.Draw(scrBuf, invalidRects)
+			draw.Draw(scr, scr.Bounds(), scrBuf, image.Point{}, draw.Src)
 			invalidRects = invalidRects[:0]
 			wf.W.FlushImage()
 			newStuff = false
