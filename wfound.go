@@ -199,6 +199,8 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 	waitingForRepaint := false
 	newStuff := false
 
+	var scrBuf *image.RGBA
+
 	var invalidRects RectSet
 
 	for {
@@ -219,7 +221,9 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				break
 			}
 			scr := wf.W.Screen()
-			scrBuf := image.NewRGBA(scr.Bounds())
+			if scrBuf == nil || scr.Bounds() != scrBuf.Bounds() {
+				scrBuf = image.NewRGBA(scr.Bounds())
+			}
 			wf.Pane.Drawer.Draw(scrBuf, invalidRects)
 			draw.Draw(scr, scr.Bounds(), scrBuf, image.Point{}, draw.Src)
 			invalidRects = invalidRects[:0]
