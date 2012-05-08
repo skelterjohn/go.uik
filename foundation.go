@@ -155,6 +155,11 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 				Max: image.Point{int(child.Size.X), int(child.Size.Y)},
 			}
 			if child.buffer == nil || child.buffer.Bounds() != or {
+				// srgba := buffer.(*image.RGBA).SubImage(r).(*image.RGBA)
+				// srgba.Rect.Max.X -= srgba.Rect.Min.X
+				// srgba.Rect.Max.Y -= srgba.Rect.Min.Y
+				// srgba.Rect.Min = image.Point{}
+				// child.buffer = srgba
 				child.buffer = image.NewRGBA(or)
 			} else {
 				ZeroRGBA(child.buffer.(*image.RGBA))
@@ -284,9 +289,10 @@ func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 		}
 		f.DragOriginBlocks[e.Which] = append(f.DragOriginBlocks[e.Which], b)
 		// Report(f.ID, "mouse origin", b.ID)
-		e.Loc.X -= bbs.Min.X
-		e.Loc.Y -= bbs.Min.Y
-		b.UserEventsIn.SendOrDrop(e)
+		ce := e
+
+		ce.Loc = e.Loc.Minus(bbs.Min)
+		b.UserEventsIn.SendOrDrop(ce)
 	})
 }
 
@@ -309,9 +315,10 @@ func (f *Foundation) DoMouseMovedEvent(e MouseMovedEvent) {
 		} else {
 			delete(fromSet, b)
 		}
-		e.Loc = e.Loc.Minus(bbs.Min)
-		e.From = e.From.Minus(bbs.Min)
-		b.UserEventsIn.SendOrDrop(e)
+		ce := e
+		ce.Loc = e.Loc.Minus(bbs.Min)
+		ce.From = e.From.Minus(bbs.Min)
+		b.UserEventsIn.SendOrDrop(ce)
 	})
 	for fromBlock := range fromSet {
 		bbs := f.ChildrenBounds[fromBlock]
