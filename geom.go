@@ -53,3 +53,12 @@ func (rs RectSet) Intersects(r geom.Rect) bool {
 	}
 	return false
 }
+
+func (rs RectSet) IntersectsStrict(r geom.Rect) bool {
+	for _, x := range rs {
+		if geom.RectsIntersectStrict(x, r) {
+			return true
+		}
+	}
+	return false
+}

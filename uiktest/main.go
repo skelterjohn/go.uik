@@ -6,10 +6,18 @@ import (
 	"github.com/skelterjohn/go.uik"
 	"github.com/skelterjohn/go.uik/layouts"
 	"github.com/skelterjohn/go.uik/widgets"
+	"github.com/skelterjohn/go.wde"
+	_ "github.com/skelterjohn/go.wde/xgb"
 	"image/color"
 )
 
 func main() {
+	go uiktest()
+	wde.Run()
+}
+
+func uiktest() {
+
 	wbounds := geom.Rect{
 		Max: geom.Coord{480, 320},
 	}
@@ -131,4 +139,5 @@ func main() {
 
 	w.W.Close()
 
+	wde.Stop()
 }

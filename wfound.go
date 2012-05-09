@@ -11,7 +11,7 @@ import (
 // FrameDelay is how long the window will wait, after receiving an invalidation, to
 // redraw the window. This gives related updates a chance to get ready. If they take
 // too long, they'll just have to wait for the next frame.
-const FrameDelay = 50 * time.Millisecond
+const FrameDelay = 16 * time.Millisecond
 
 // A foundation that wraps a wde.Window
 type WindowFoundation struct {
