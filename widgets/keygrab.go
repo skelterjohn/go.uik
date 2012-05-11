@@ -71,7 +71,7 @@ func (l *KeyGrab) handleEvents() {
 			case uik.MouseDownEvent:
 				l.GrabFocus()
 			case uik.KeyTypedEvent:
-				l.key = e.Letter
+				l.key = e.Glyph
 				l.render()
 				l.Invalidate()
 			case uik.KeyFocusEvent:

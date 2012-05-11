@@ -142,7 +142,6 @@ func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 // drawing
 
 func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
-	// Report(f.ID, "Foundation.Draw()", buffer.Bounds())
 	gc := draw2d.NewGraphicContext(buffer)
 	f.DoPaint(gc)
 	for child, bounds := range f.ChildrenBounds {

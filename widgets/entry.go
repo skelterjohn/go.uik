@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
+	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/color"
 	"time"
@@ -196,7 +197,7 @@ func (e *Entry) handleEvents() {
 			case uik.KeyTypedEvent:
 
 				// uik.Report("key", ev.Code, ev.Letter)
-				if uik.IsGlyph(ev.Code) {
+				if ev.Glyph != "" {
 					start, end := e.cursor, e.cursor
 					if e.selecting {
 						end = e.selectCursor
@@ -208,12 +209,12 @@ func (e *Entry) handleEvents() {
 					tail := e.text[end:]
 					e.text = make([]rune, len(head)+len(tail)+1)[:0]
 					e.text = append(e.text, head...)
-					e.text = append(e.text, []rune(ev.Letter)[0])
+					e.text = append(e.text, []rune(ev.Glyph)[0])
 					e.text = append(e.text, tail...)
 					e.cursor = start + 1
 				} else {
-					switch ev.Code {
-					case uik.KeyBackspace:
+					switch ev.Key {
+					case wde.KeyBackspace:
 						if len(e.text) == 0 {
 							break
 						}
@@ -231,7 +232,7 @@ func (e *Entry) handleEvents() {
 						copy(e.text[start:], e.text[end:])
 						e.text = e.text[:len(e.text)-(end-start)]
 						e.cursor = start
-					case uik.KeyDelete:
+					case wde.KeyDelete:
 						if len(e.text) == 0 {
 							break
 						}
@@ -249,11 +250,11 @@ func (e *Entry) handleEvents() {
 						copy(e.text[start:], e.text[end:])
 						e.text = e.text[:len(e.text)-(end-start)]
 						e.cursor = start
-					case uik.KeyArrowLeft:
+					case wde.KeyLeftArrow:
 						if e.cursor > 0 {
 							e.cursor--
 						}
-					case uik.KeyArrowRight:
+					case wde.KeyRightArrow:
 						if e.cursor < len(e.text) {
 							e.cursor++
 						}

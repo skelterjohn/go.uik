@@ -223,9 +223,13 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 			scr := wf.W.Screen()
 			if scrBuf == nil || scr.Bounds() != scrBuf.Bounds() {
 				scrBuf = image.NewRGBA(scr.Bounds())
+				invalidRects = RectSet{wf.Bounds()}
 			}
 			wf.Pane.Drawer.Draw(scrBuf, invalidRects)
-			draw.Draw(scr, scr.Bounds(), scrBuf, image.Point{}, draw.Src)
+			for _, ir := range invalidRects {
+				si := scrBuf.SubImage(RectangleForRect(ir))
+				draw.Draw(scr, scr.Bounds(), si, image.Point{}, draw.Src)
+			}
 			invalidRects = invalidRects[:0]
 			wf.W.FlushImage()
 			newStuff = false

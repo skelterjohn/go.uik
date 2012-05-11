@@ -92,6 +92,7 @@ func (f *Flow) reflow() {
 		//fmt.Println("flow", cbounds.Width(), cbounds.Height())
 		left = cbounds.Max.X
 	}
+	f.Invalidate()
 	// fmt.Println()
 }
 
