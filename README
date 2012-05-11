@@ -1,0 +1,7 @@
+This project is in its infancy.
+
+Feel free to experiment, but don't expect too much yet.
+
+There is a google group dedicated to this project at https://groups.google.com/forum/?fromgroups#!forum/go-uik
+
+If you wish to run uiktest, and you're on windows or linux, it should work via "go get". If you're on os x, you'll need to install the go.wde framework first (see http://github.com/skelterjohn/go.wde for details).
