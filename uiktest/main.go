@@ -84,6 +84,7 @@ func uiktest() {
 	g.Add <- layouts.BlockData{
 		Block: &l1_0.Block,
 		GridX: 1, GridY: 0,
+		MinSize: geom.Coord{100, 100},
 	}
 	g.Add <- layouts.BlockData{
 		Block: &l1_1.Block,
@@ -109,26 +110,12 @@ func uiktest() {
 
 	e := widgets.NewEntry(geom.Coord{100, 30})
 
-	// Here we create a flow layout, which just lines up its blocks from
-	// left to right.
-	if false {
-		fl := layouts.NewFlow()
+	// the HBox is a special type of grid that lines things up horizontally
+	hb := layouts.HBox(layouts.GridConfig{},
+		&b.Block, &l.Block, &kg.Block, &b2.Block, &cb.Block, &kg2.Block, &g.Block, &e.Block)
 
-		fl.Add <- &b.Block
-		fl.Add <- &l.Block
-		fl.Add <- &kg.Block
-		fl.Add <- &b2.Block
-		fl.Add <- &cb.Block
-		fl.Add <- &kg2.Block
-		fl.Add <- &g.Block
-		fl.Add <- &e.Block
-		// We add it to the window, taking up the entire space the window has.
-		w.Pane <- &fl.Block
-	} else {
-		hb := layouts.HBox(layouts.GridConfig{},
-			&b.Block, &l.Block, &kg.Block, &b2.Block, &cb.Block, &kg2.Block, &g.Block, &e.Block)
-		w.Pane <- &hb.Block
-	}
+	// set this HBox to be the window pane
+	w.Pane <- &hb.Block
 
 	w.Show()
 

@@ -41,10 +41,11 @@ const (
 )
 
 type BlockData struct {
-	Block            *uik.Block
-	GridX, GridY     int
-	ExtraX, ExtraY   int
-	AnchorX, AnchorY Anchor
+	Block                           *uik.Block
+	GridX, GridY                    int
+	ExtraX, ExtraY                  int
+	AnchorX, AnchorY                Anchor
+	MinSize, PreferredSize, MaxSize geom.Coord
 }
 
 type GridConfig struct {
@@ -131,20 +132,44 @@ func (g *Grid) reflex() {
 	g.vflex = &flex{}
 	for _, bd := range g.childrenBlockData {
 		csh := g.ChildrenHints[bd.Block]
-		g.hflex.add(&elem{
+
+		helem := elem{
 			index:    bd.GridX,
 			extra:    bd.ExtraX,
 			minSize:  csh.MinSize.X,
 			prefSize: csh.PreferredSize.X,
 			maxSize:  math.Inf(1),
-		})
-		g.vflex.add(&elem{
+		}
+		if bd.MinSize.X != 0 {
+			helem.minSize = math.Max(bd.MinSize.X, helem.minSize)
+		}
+		if bd.PreferredSize.X != 0 {
+			helem.prefSize = bd.PreferredSize.X
+		}
+		if bd.MaxSize.X != 0 {
+			helem.maxSize = math.Min(bd.MaxSize.X, helem.maxSize)
+		}
+		helem.prefSize = math.Min(helem.maxSize, math.Max(helem.minSize, helem.prefSize))
+		g.hflex.add(&helem)
+
+		velem := elem{
 			index:    bd.GridY,
 			extra:    bd.ExtraY,
 			minSize:  csh.MinSize.Y,
 			prefSize: csh.PreferredSize.Y,
 			maxSize:  math.Inf(1),
-		})
+		}
+		if bd.MinSize.Y != 0 {
+			velem.minSize = math.Max(bd.MinSize.Y, velem.minSize)
+		}
+		if bd.PreferredSize.Y != 0 {
+			velem.prefSize = bd.PreferredSize.Y
+		}
+		if bd.MaxSize.Y != 0 {
+			velem.maxSize = math.Min(bd.MaxSize.Y, velem.maxSize)
+		}
+		velem.prefSize = math.Min(velem.maxSize, math.Max(velem.minSize, velem.prefSize))
+		g.vflex.add(&velem)
 	}
 }
 
@@ -160,6 +185,7 @@ func (g *Grid) makePreferences() {
 }
 
 func (g *Grid) regrid() {
+
 	g.reflex()
 
 	_, minXs, maxXs := g.hflex.constrain(g.Size.X)
@@ -254,6 +280,23 @@ func (g *Grid) draw(gc draw2d.GraphicContext) {
 	gc.SetFillColor(color.RGBA{150, 150, 150, 255})
 	safeRect(gc, geom.Coord{0, 0}, g.Size)
 	gc.FillStroke()
+
+	g.reflex()
+
+	_, minXs, _ := g.hflex.constrain(g.Size.X)
+	for _, x := range minXs[1:] {
+		gc.MoveTo(x, 0)
+		gc.LineTo(x, g.Size.Y)
+
+	}
+	_, minYs, _ := g.vflex.constrain(g.Size.Y)
+	for _, y := range minYs[1:] {
+		gc.MoveTo(0, y)
+		gc.LineTo(g.Size.X, y)
+
+	}
+	gc.Stroke()
+	// _, _, maxYs := g.vflex.constrain(g.Size.Y)
 }
 
 func (g *Grid) handleEvents() {
