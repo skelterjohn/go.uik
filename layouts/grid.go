@@ -4,7 +4,7 @@ import (
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
-	"image/color"
+	// "image/color"
 	"image/draw"
 	"math"
 )
@@ -101,9 +101,9 @@ func (g *Grid) Initialize() {
 	g.getConfig = make(chan GridConfig, 1)
 	g.GetConfig = g.getConfig
 
-	g.Paint = func(gc draw2d.GraphicContext) {
-		g.draw(gc)
-	}
+	// g.Paint = func(gc draw2d.GraphicContext) {
+	// 	g.draw(gc)
+	// }
 }
 
 func (g *Grid) addBlock(bd BlockData) {
@@ -277,9 +277,9 @@ func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
 
 func (g *Grid) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
-	gc.SetFillColor(color.RGBA{150, 150, 150, 255})
-	safeRect(gc, geom.Coord{0, 0}, g.Size)
-	gc.FillStroke()
+	// gc.SetFillColor(color.RGBA{150, 150, 150, 255})
+	// safeRect(gc, geom.Coord{0, 0}, g.Size)
+	// gc.FillStroke()
 
 	g.reflex()
 

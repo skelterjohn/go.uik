@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
@@ -8,6 +9,7 @@ import (
 	"github.com/skelterjohn/go.uik/widgets"
 	"github.com/skelterjohn/go.wde"
 	"image/color"
+	"image/gif"
 )
 
 func main() {
@@ -64,7 +66,6 @@ func uiktest() {
 	cb := widgets.NewCheckbox(geom.Coord{50, 50})
 
 	kg := widgets.NewKeyGrab(geom.Coord{50, 50})
-	kg2 := widgets.NewKeyGrab(geom.Coord{50, 50})
 
 	g := layouts.NewGrid(layouts.GridConfig{})
 
@@ -84,13 +85,39 @@ func uiktest() {
 	g.Add <- layouts.BlockData{
 		Block: &l1_0.Block,
 		GridX: 1, GridY: 0,
-		MinSize: geom.Coord{100, 100},
+		MinSize: geom.Coord{60, 60},
+		AnchorX: layouts.AnchorMax,
 	}
 	g.Add <- layouts.BlockData{
 		Block: &l1_1.Block,
 		GridX: 1, GridY: 1,
 		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
 		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
+	}
+	g.Add <- layouts.BlockData{
+		Block: &widgets.NewButton("Spanner").Block,
+		GridX: 0, GridY: 2,
+		ExtraX: 1,
+	}
+	g.Add <- layouts.BlockData{
+		Block: &widgets.NewButton("Offset Spanner").Block,
+		GridX: 1, GridY: 3,
+		ExtraX: 1,
+	}
+
+	imgReader := bytes.NewReader(gordon_gif())
+	gordonImage, gerr := gif.Decode(imgReader)
+	if gerr == nil {
+		im := widgets.NewImage(widgets.ImageConfig{
+			Image: gordonImage,
+		})
+		g.Add <- layouts.BlockData{
+			Block: &im.Block,
+			GridX: 0, GridY: 4,
+			ExtraX: 2,
+		}
+	} else {
+		fmt.Println(gerr)
 	}
 
 	clicker3 := make(widgets.Clicker)
@@ -112,7 +139,7 @@ func uiktest() {
 
 	// the HBox is a special type of grid that lines things up horizontally
 	hb := layouts.HBox(layouts.GridConfig{},
-		&b.Block, &l.Block, &kg.Block, &b2.Block, &cb.Block, &kg2.Block, &g.Block, &e.Block)
+		&b.Block, &l.Block, &kg.Block, &b2.Block, &cb.Block, &g.Block, &e.Block)
 
 	// set this HBox to be the window pane
 	w.Pane <- &hb.Block

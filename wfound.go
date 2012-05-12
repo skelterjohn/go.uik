@@ -196,11 +196,6 @@ func (wf *WindowFoundation) handleWindowEvents() {
 	}
 }
 
-func (wf *WindowFoundation) SleepRepaint(delay time.Duration) {
-	time.Sleep(delay)
-	wf.doRepaintWindow <- true
-}
-
 func (wf *WindowFoundation) handleWindowDrawing() {
 
 	waitingForRepaint := false
@@ -221,7 +216,9 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 			} else {
 				waitingForRepaint = true
 				newStuff = true
-				go wf.SleepRepaint(FrameDelay)
+				time.AfterFunc(FrameDelay, func() {
+					wf.doRepaintWindow <- true
+				})
 			}
 
 		case <-wf.doRepaintWindow:

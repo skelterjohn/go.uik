@@ -1,0 +1,104 @@
+package widgets
+
+import (
+	"code.google.com/p/draw2d/draw2d"
+	"github.com/skelterjohn/geom"
+	"github.com/skelterjohn/go.uik"
+	"image"
+	"math"
+)
+
+type ImageConfig struct {
+	Image image.Image
+}
+
+func (ic ImageConfig) ImageSize() (s geom.Coord) {
+	ib := ic.Image.Bounds()
+	is := ib.Size()
+	s.X = float64(is.X)
+	s.Y = float64(is.Y)
+	return
+}
+
+type Image struct {
+	uik.Block
+
+	config    ImageConfig
+	SetConfig chan<- ImageConfig
+	setConfig chan ImageConfig
+	GetConfig <-chan ImageConfig
+	getConfig chan ImageConfig
+}
+
+func NewImage(cfg ImageConfig) (i *Image) {
+	i = new(Image)
+
+	i.Initialize()
+	i.updateConfig(cfg)
+
+	go i.handleEvents()
+
+	return
+}
+
+func (i *Image) Initialize() {
+	i.Block.Initialize()
+
+	i.setConfig = make(chan ImageConfig, 1)
+	i.SetConfig = i.setConfig
+	i.getConfig = make(chan ImageConfig, 1)
+	i.GetConfig = i.getConfig
+
+	i.Paint = func(gc draw2d.GraphicContext) {
+		i.draw(gc)
+	}
+}
+
+func (i *Image) draw(gc draw2d.GraphicContext) {
+	ib := i.config.Image.Bounds()
+	s := ib.Size()
+	w := float64(s.X)
+	h := float64(s.Y)
+	sx := i.Size.X / w
+	sy := i.Size.Y / h
+	gc.Scale(sx, sy)
+	gc.DrawImage(i.config.Image)
+}
+
+func (i *Image) updateConfig(config ImageConfig) {
+	i.config = config
+	i.SetSizeHint(uik.SizeHint{
+		MinSize:       geom.Coord{},
+		PreferredSize: i.config.ImageSize(),
+		MaxSize:       geom.Coord{math.Inf(1), math.Inf(1)},
+	})
+	i.Invalidate()
+}
+
+func (i *Image) handleEvents() {
+
+	for {
+		select {
+		case e := <-i.UserEvents:
+			switch e := e.(type) {
+			case uik.ResizeEvent:
+				if i.Size == e.Size {
+					break
+				}
+				i.Block.HandleEvent(e)
+				i.Invalidate()
+				// go uik.ShowBuffer("label buffer", l.Buffer)
+			default:
+				i.HandleEvent(e)
+			}
+		case config := <-i.setConfig:
+			if i.config == config {
+				break
+			}
+			i.updateConfig(config)
+			// go uik.ShowBuffer("label buffer", l.Buffer)
+		case i.getConfig <- i.config:
+			// go uik.ShowBuffer("label buffer", l.Buffer)
+		}
+	}
+}
