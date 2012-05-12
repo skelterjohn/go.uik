@@ -109,18 +109,24 @@ func uiktest() {
 
 	// Here we create a flow layout, which just lines up its blocks from
 	// left to right.
-	fl := layouts.NewFlow()
+	if false {
+		fl := layouts.NewFlow()
 
-	fl.Add <- &b.Block
-	fl.Add <- &l.Block
-	fl.Add <- &kg.Block
-	fl.Add <- &b2.Block
-	fl.Add <- &cb.Block
-	fl.Add <- &kg2.Block
-	fl.Add <- &g.Block
-	fl.Add <- &e.Block
-	// We add it to the window, taking up the entire space the window has.
-	w.Pane <- &fl.Block
+		fl.Add <- &b.Block
+		fl.Add <- &l.Block
+		fl.Add <- &kg.Block
+		fl.Add <- &b2.Block
+		fl.Add <- &cb.Block
+		fl.Add <- &kg2.Block
+		fl.Add <- &g.Block
+		fl.Add <- &e.Block
+		// We add it to the window, taking up the entire space the window has.
+		w.Pane <- &fl.Block
+	} else {
+		hb := layouts.HBox(layouts.GridConfig{},
+			&b.Block, &l.Block, &kg.Block, &b2.Block, &cb.Block, &kg2.Block, &g.Block, &e.Block)
+		w.Pane <- &hb.Block
+	}
 
 	w.Show()
 

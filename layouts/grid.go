@@ -9,6 +9,28 @@ import (
 	"math"
 )
 
+func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
+	g = NewGrid(config)
+	for i, b := range blocks {
+		g.Add <- BlockData{
+			Block: b,
+			GridX: 0, GridY: i,
+		}
+	}
+	return
+}
+
+func HBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
+	g = NewGrid(config)
+	for i, b := range blocks {
+		g.Add <- BlockData{
+			Block: b,
+			GridX: i, GridY: 0,
+		}
+	}
+	return
+}
+
 type Anchor float64
 
 const (
@@ -25,35 +47,6 @@ type BlockData struct {
 type GridConfig struct {
 }
 
-type table struct {
-	data map[int]map[int]BlockData
-}
-
-func (t *table) get(x, y int) (bd BlockData, ok bool) {
-	if t.data == nil {
-		ok = false
-		return
-	}
-	col, ok := t.data[x]
-	if !ok {
-		return
-	}
-	bd, ok = col[y]
-	return
-}
-
-func (t *table) set(x, y int, bd BlockData) {
-	if t.data == nil {
-		t.data = map[int]map[int]BlockData{}
-	}
-	col := t.data[x]
-	if col == nil {
-		col = map[int]BlockData{}
-		t.data[x] = col
-	}
-	col[y] = bd
-}
-
 type Grid struct {
 	uik.Foundation
 
@@ -61,7 +54,6 @@ type Grid struct {
 	childrenBlockData map[*uik.Block]BlockData
 	config            GridConfig
 
-	table        table
 	vflex, hflex *flex
 
 	Add       chan<- BlockData
