@@ -88,6 +88,8 @@ func uiktest() {
 	g.Add <- layouts.BlockData{
 		Block: &l1_1.Block,
 		GridX: 1, GridY: 1,
+		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
+		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
 	}
 
 	clicker3 := make(widgets.Clicker)
