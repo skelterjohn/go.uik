@@ -26,7 +26,7 @@ type WindowFoundation struct {
 func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err error) {
 	wf = new(WindowFoundation)
 
-	wf.W, err = WindowGenerator(parent, width, height)
+	wf.W, err = wde.NewWindow(width, height)
 	if err != nil {
 		return
 	}
