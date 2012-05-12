@@ -95,14 +95,19 @@ func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
 func (b *Button) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
 
+	bbounds := geom.Rect{
+		Min: geom.Coord{2, 2},
+		Max: geom.Coord{b.Size.X - 2, b.Size.Y - 2},
+	}
+
 	// gc.SetStrokeColor(color.Black)
 	if b.pressed {
 		gc.SetFillColor(color.RGBA{150, 150, 150, 255})
-		safeRect(gc, geom.Coord{0, 0}, b.Size)
+		safeRect(gc, bbounds.Min, bbounds.Max)
 		gc.Fill()
 	} else {
 		gc.SetFillColor(color.RGBA{200, 200, 200, 255})
-		safeRect(gc, geom.Coord{0, 0}, b.Size)
+		safeRect(gc, bbounds.Min, bbounds.Max)
 		gc.Fill()
 	}
 }
@@ -135,10 +140,10 @@ func (b *Button) handleEvents() {
 					b.Foundation.HandleEvent(e)
 				}
 				lbounds := b.Bounds()
-				lbounds.Min.X += 1
-				lbounds.Min.Y += 1
-				lbounds.Max.X -= 1
-				lbounds.Max.Y -= 1
+				lbounds.Min.X += 3
+				lbounds.Min.Y += 3
+				lbounds.Max.X -= 3
+				lbounds.Max.Y -= 3
 				b.ChildrenBounds[&b.Label.Block] = lbounds
 				b.Label.UserEventsIn <- uik.ResizeEvent{
 					Size: b.Size,

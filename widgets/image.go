@@ -61,6 +61,7 @@ func (i *Image) draw(gc draw2d.GraphicContext) {
 	h := float64(s.Y)
 	sx := i.Size.X / w
 	sy := i.Size.Y / h
+	// uik.Report(i.Size, sx, sy)
 	gc.Scale(sx, sy)
 	gc.DrawImage(i.config.Image)
 }
