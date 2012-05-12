@@ -67,6 +67,15 @@ func (b *Button) Initialize() {
 	b.Paint = func(gc draw2d.GraphicContext) {
 		b.draw(gc)
 	}
+
+	var cs geom.Coord
+	cs.X, cs.Y = b.Bounds().Size()
+	sh := uik.SizeHint{
+		MinSize:       cs,
+		PreferredSize: cs,
+		MaxSize:       cs,
+	}
+	b.SetSizeHint(sh)
 }
 
 func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {

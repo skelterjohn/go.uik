@@ -10,8 +10,7 @@ import (
 type Flow struct {
 	uik.Foundation
 
-	childSizeHints map[*uik.Block]uik.SizeHint
-	childIndices   map[*uik.Block]int
+	childIndices map[*uik.Block]int
 
 	count int
 
@@ -36,7 +35,6 @@ func (f *Flow) Initialize() {
 	f.DrawOp = draw.Over
 	f.Add = make(chan *uik.Block, 10)
 	f.Remove = make(chan *uik.Block, 10)
-	f.childSizeHints = map[*uik.Block]uik.SizeHint{}
 	f.childIndices = map[*uik.Block]int{}
 }
 
@@ -70,7 +68,7 @@ func (f *Flow) reflow() {
 	var left float64
 	for i := 0; i < f.count; i++ {
 		child := children[i]
-		csh, ok := f.childSizeHints[child]
+		csh, ok := f.ChildrenHints[child]
 		if !ok {
 			//println("skip", child)
 			continue
@@ -118,7 +116,7 @@ func (f *Flow) HandleEvents() {
 				break
 			}
 
-			if osh, ok := f.childSizeHints[bsh.Block]; ok {
+			if osh, ok := f.ChildrenHints[bsh.Block]; ok {
 				f.sizeHint.MinSize.X -= osh.MinSize.X
 				f.sizeHint.MinSize.Y -= osh.MinSize.Y
 				f.sizeHint.PreferredSize.X -= osh.PreferredSize.X
@@ -126,7 +124,7 @@ func (f *Flow) HandleEvents() {
 				f.sizeHint.MaxSize.X -= osh.MaxSize.X
 				f.sizeHint.MaxSize.Y -= osh.MaxSize.Y
 			}
-			f.childSizeHints[bsh.Block] = bsh.SizeHint
+			f.ChildrenHints[bsh.Block] = bsh.SizeHint
 			f.sizeHint.MinSize.X += bsh.SizeHint.MinSize.X
 			f.sizeHint.MinSize.Y += bsh.SizeHint.MinSize.Y
 			f.sizeHint.PreferredSize.X += bsh.SizeHint.PreferredSize.X
@@ -159,7 +157,7 @@ func (f *Flow) HandleEvents() {
 			delete(f.childIndices, b)
 			f.count--
 
-			delete(f.childSizeHints, b)
+			delete(f.ChildrenHints, b)
 
 			f.RemoveBlock(b)
 

@@ -120,7 +120,7 @@ func uiktest() {
 	fl.Add <- &g.Block
 	fl.Add <- &e.Block
 	// We add it to the window, taking up the entire space the window has.
-	w.SetPane(&fl.Block)
+	w.Pane <- &fl.Block
 
 	w.Show()
 

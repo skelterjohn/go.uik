@@ -58,11 +58,11 @@ type Grid struct {
 	uik.Foundation
 
 	children          map[*uik.Block]bool
-	childrenSizeHints map[*uik.Block]uik.SizeHint
 	childrenBlockData map[*uik.Block]BlockData
 	config            GridConfig
 
-	table table
+	table        table
+	vflex, hflex *flex
 
 	Add       chan<- BlockData
 	add       chan BlockData
@@ -91,7 +91,6 @@ func (g *Grid) Initialize() {
 	g.DrawOp = draw.Over
 
 	g.children = map[*uik.Block]bool{}
-	g.childrenSizeHints = map[*uik.Block]uik.SizeHint{}
 	g.childrenBlockData = map[*uik.Block]BlockData{}
 
 	g.add = make(chan BlockData, 1)
@@ -112,6 +111,7 @@ func (g *Grid) addBlock(bd BlockData) {
 	g.AddBlock(bd.Block)
 	g.children[bd.Block] = true
 	g.childrenBlockData[bd.Block] = bd
+	g.vflex = nil
 	g.regrid()
 }
 
@@ -119,136 +119,84 @@ func (g *Grid) remBlock(b *uik.Block) {
 	if !g.children[b] {
 		return
 	}
-	delete(g.childrenSizeHints, b)
+	delete(g.ChildrenHints, b)
 	delete(g.childrenBlockData, b)
+	g.vflex = nil
 	g.regrid()
+}
+
+func (g *Grid) reflex() {
+	if g.vflex != nil {
+		return
+	}
+	g.hflex = &flex{}
+	g.vflex = &flex{}
+	for _, bd := range g.childrenBlockData {
+		csh := g.ChildrenHints[bd.Block]
+		g.hflex.add(&elem{
+			index:    bd.GridX,
+			extra:    bd.ExtraX,
+			minSize:  csh.MinSize.X,
+			prefSize: csh.PreferredSize.X,
+			maxSize:  math.Inf(1),
+		})
+		g.vflex.add(&elem{
+			index:    bd.GridY,
+			extra:    bd.ExtraY,
+			minSize:  csh.MinSize.Y,
+			prefSize: csh.PreferredSize.Y,
+			maxSize:  math.Inf(1),
+		})
+	}
 }
 
 func (g *Grid) makePreferences() {
 	var sizeHint uik.SizeHint
-
-	maxX, maxY := 0, 0
-	for _, bd := range g.childrenBlockData {
-		if bd.GridX+bd.ExtraX > maxX {
-			maxX = bd.GridX + bd.ExtraX
-		}
-		if bd.GridY+bd.ExtraY > maxY {
-			maxY = bd.GridY + bd.ExtraY
-		}
-	}
-
-	widths := make([]float64, maxX+1)
-	heights := make([]float64, maxY+1)
-
-	for _, bd := range g.childrenBlockData {
-		sh, ok := g.childrenSizeHints[bd.Block]
-		if !ok {
-			continue
-		}
-		widths[bd.GridX] = math.Max(widths[bd.GridX], sh.PreferredSize.X)
-		heights[bd.GridY] = math.Max(heights[bd.GridY], sh.PreferredSize.Y)
-	}
-
-	minXs := make([]float64, maxX)
-	for i, w := range widths[:len(widths)-1] {
-		if i != 0 {
-			minXs[i] += minXs[i-1]
-		}
-		minXs[i] += w
-	}
-	minYs := make([]float64, maxY)
-	for i, h := range heights[:len(heights)-1] {
-		if i != 0 {
-			minYs[i] += minYs[i-1]
-		}
-		minYs[i] += h
-	}
-
-	for _, bd := range g.childrenBlockData {
-		minX := 0.0
-		if bd.GridX != 0 {
-			minX = minXs[bd.GridX-1]
-		}
-		minY := 0.0
-		if bd.GridY != 0 {
-			minY = minYs[bd.GridY-1]
-		}
-		bounds := geom.Rect{
-			geom.Coord{minX, minY},
-			geom.Coord{minX + widths[bd.GridX], minY + heights[bd.GridY]},
-		}
-
-		if bounds.Max.X > sizeHint.PreferredSize.X {
-			sizeHint.PreferredSize.X = bounds.Max.X
-		}
-		if bounds.Max.Y > sizeHint.PreferredSize.Y {
-			sizeHint.PreferredSize.Y = bounds.Max.Y
-		}
-	}
-
-	sizeHint.MinSize = sizeHint.PreferredSize
-	sizeHint.MaxSize = sizeHint.PreferredSize
+	g.reflex()
+	hmin, hpref, hmax := g.hflex.makePrefs()
+	vmin, vpref, vmax := g.vflex.makePrefs()
+	sizeHint.MinSize = geom.Coord{hmin, vmin}
+	sizeHint.PreferredSize = geom.Coord{hpref, vpref}
+	sizeHint.MaxSize = geom.Coord{hmax, vmax}
 	g.SetSizeHint(sizeHint)
 }
 
 func (g *Grid) regrid() {
+	g.reflex()
 
-	maxX, maxY := 0, 0
-	for _, bd := range g.childrenBlockData {
-		if bd.GridX+bd.ExtraX > maxX {
-			maxX = bd.GridX + bd.ExtraX
+	_, minXs, maxXs := g.hflex.constrain(g.Size.X)
+	_, minYs, maxYs := g.vflex.constrain(g.Size.Y)
+
+	for child, csh := range g.ChildrenHints {
+		bd := g.childrenBlockData[child]
+		gridBounds := geom.Rect{
+			Min: geom.Coord{
+				X: minXs[bd.GridX],
+				Y: minYs[bd.GridY],
+			},
+			Max: geom.Coord{
+				X: maxXs[bd.GridX+bd.ExtraX],
+				Y: maxYs[bd.GridY+bd.ExtraY],
+			},
 		}
-		if bd.GridY+bd.ExtraY > maxY {
-			maxY = bd.GridY + bd.ExtraY
+		gridSizeX, gridSizeY := gridBounds.Size()
+		if gridSizeX > csh.MaxSize.X {
+			gridBounds.Max.X = gridBounds.Min.X + csh.MaxSize.X
+		}
+		if gridSizeY > csh.MaxSize.Y {
+			gridBounds.Max.Y = gridBounds.Min.Y + csh.MaxSize.Y
+		}
+
+		g.ChildrenBounds[child] = gridBounds
+
+		gridSizeX, gridSizeY = gridBounds.Size()
+
+		child.UserEventsIn <- uik.ResizeEvent{
+			Size: geom.Coord{gridSizeX, gridSizeY},
 		}
 	}
 
-	widths := make([]float64, maxX+1)
-	heights := make([]float64, maxY+1)
-
-	for _, bd := range g.childrenBlockData {
-		sh, ok := g.childrenSizeHints[bd.Block]
-		if !ok {
-			continue
-		}
-		widths[bd.GridX] = math.Max(widths[bd.GridX], sh.PreferredSize.X)
-		heights[bd.GridY] = math.Max(heights[bd.GridY], sh.PreferredSize.Y)
-	}
-
-	minXs := make([]float64, maxX)
-	for i, w := range widths[:len(widths)-1] {
-		if i != 0 {
-			minXs[i] += minXs[i-1]
-		}
-		minXs[i] += w
-	}
-	minYs := make([]float64, maxY)
-	for i, h := range heights[:len(heights)-1] {
-		if i != 0 {
-			minYs[i] += minYs[i-1]
-		}
-		minYs[i] += h
-	}
-
-	for _, bd := range g.childrenBlockData {
-		minX := 0.0
-		if bd.GridX != 0 {
-			minX = minXs[bd.GridX-1]
-		}
-		minY := 0.0
-		if bd.GridY != 0 {
-			minY = minYs[bd.GridY-1]
-		}
-		bounds := geom.Rect{
-			geom.Coord{minX, minY},
-			geom.Coord{minX + widths[bd.GridX], minY + heights[bd.GridY]},
-		}
-
-		g.ChildrenBounds[bd.Block] = bounds
-		bd.Block.UserEventsIn <- uik.ResizeEvent{
-			Size: geom.Coord{widths[bd.GridX], heights[bd.GridY]},
-		}
-	}
+	g.Invalidate()
 }
 
 func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
@@ -287,10 +235,11 @@ func (g *Grid) handleEvents() {
 				// Do I know you?
 				break
 			}
-			g.childrenSizeHints[bsh.Block] = bsh.SizeHint
+			g.ChildrenHints[bsh.Block] = bsh.SizeHint
 
-			g.makePreferences()
-			g.Invalidate()
+			g.vflex = nil
+
+			g.regrid()
 		case e := <-g.BlockInvalidations:
 			g.DoBlockInvalidation(e)
 			// go uik.ShowBuffer("grid", g.Buffer)

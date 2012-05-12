@@ -46,6 +46,7 @@ func (f *Foundation) Initialize() {
 	f.BlockSizeHints = make(chan BlockSizeHint, 1)
 	f.Children = map[*Block]bool{}
 	f.ChildrenBounds = map[*Block]geom.Rect{}
+	f.ChildrenHints = map[*Block]SizeHint{}
 	f.ChildrenLastBuffers = map[*Block]image.Image{}
 	f.BlockInvalidations = make(chan BlockInvalidation, 1)
 	f.DragOriginBlocks = map[wde.Button][]*Block{}

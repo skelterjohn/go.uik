@@ -17,7 +17,8 @@ const FrameDelay = 16 * time.Millisecond
 type WindowFoundation struct {
 	Foundation
 	W               wde.Window
-	Pane            *Block
+	pane            *Block
+	Pane            chan *Block
 	waitForRepaint  chan bool
 	doRepaintWindow chan bool
 }
@@ -48,6 +49,7 @@ func (wf *WindowFoundation) Initialize() {
 	wf.waitForRepaint = make(chan bool)
 	wf.doRepaintWindow = make(chan bool)
 	wf.Invalidations = make(chan Invalidation, 1)
+	wf.Pane = make(chan *Block, 1)
 
 	wf.Paint = ClearPaint
 
@@ -56,11 +58,11 @@ func (wf *WindowFoundation) Initialize() {
 	wf.HasKeyFocus = true
 }
 
-func (wf *WindowFoundation) SetPane(b *Block) {
-	if wf.Pane != nil {
-		wf.RemoveBlock(wf.Pane)
+func (wf *WindowFoundation) setPane(b *Block) {
+	if wf.pane != nil {
+		wf.RemoveBlock(wf.pane)
 	}
-	wf.Pane = b
+	wf.pane = b
 	// Report("pane", wf.ID, b.ID)
 	wf.PlaceBlock(b, geom.Rect{geom.Coord{}, wf.Size})
 }
@@ -74,10 +76,10 @@ func (wf *WindowFoundation) HandleEvent(e interface{}) {
 	switch e := e.(type) {
 	case ResizeEvent:
 		wf.DoResizeEvent(e)
-		if wf.Pane != nil {
-			wf.Pane.UserEventsIn.SendOrDrop(e)
+		if wf.pane != nil {
+			wf.pane.UserEventsIn.SendOrDrop(e)
 		}
-		wf.ChildrenBounds[wf.Pane] = geom.Rect{geom.Coord{}, e.Size}
+		wf.ChildrenBounds[wf.pane] = geom.Rect{geom.Coord{}, e.Size}
 	default:
 		wf.Foundation.HandleEvent(e)
 	}
@@ -205,6 +207,8 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 
 	for {
 		select {
+		case pane := <-wf.Pane:
+			wf.setPane(pane)
 		case inv := <-wf.Invalidations:
 			invalidRects = append(invalidRects, inv.Bounds)
 			if waitingForRepaint {
@@ -225,7 +229,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				scrBuf = image.NewRGBA(scr.Bounds())
 				invalidRects = RectSet{wf.Bounds()}
 			}
-			wf.Pane.Drawer.Draw(scrBuf, invalidRects)
+			wf.pane.Drawer.Draw(scrBuf, invalidRects)
 			for _, ir := range invalidRects {
 				si := scrBuf.SubImage(RectangleForRect(ir))
 				draw.Draw(scr, scr.Bounds(), si, image.Point{}, draw.Src)
