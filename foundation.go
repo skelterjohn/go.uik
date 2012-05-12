@@ -65,14 +65,17 @@ func (f *Foundation) RemoveBlock(b *Block) {
 }
 
 func (f *Foundation) AddBlock(b *Block) {
+	if b.Parent == f {
+		return
+	}
+
 	// Report(f.ID, "adding", b.ID)
-	if b.Parent == nil {
-		f.Children[b] = true
-	} else if b.Parent != f {
+	if b.Parent != nil {
 		// TODO: communication here
 		b.Parent.RemoveBlock(b)
 	}
 
+	f.Children[b] = true
 	b.Parent = f
 	// Report("invalidation link", b.ID, "->", f.ID)
 	b.Invalidations = make(InvalidationChan, 1)

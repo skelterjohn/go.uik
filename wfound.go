@@ -186,6 +186,11 @@ func (wf *WindowFoundation) handleWindowEvents() {
 					Y: float64(e.Height),
 				},
 			})
+
+			if wf.pane != nil {
+				wf.PlaceBlock(wf.pane, geom.Rect{geom.Coord{}, wf.Size})
+			}
+
 			wf.Invalidate()
 		}
 	}

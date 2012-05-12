@@ -239,17 +239,23 @@ func (g *Grid) handleEvents() {
 
 			g.vflex = nil
 
+			g.makePreferences()
 			g.regrid()
 		case e := <-g.BlockInvalidations:
 			g.DoBlockInvalidation(e)
 			// go uik.ShowBuffer("grid", g.Buffer)
 		case g.config = <-g.setConfig:
+			g.vflex = nil
 			g.makePreferences()
 		case g.getConfig <- g.config:
 		case bd := <-g.add:
 			g.addBlock(bd)
+			g.vflex = nil
+			g.makePreferences()
 		case b := <-g.remove:
 			g.remBlock(b)
+			g.vflex = nil
+			g.makePreferences()
 		}
 	}
 }
