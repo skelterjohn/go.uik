@@ -25,7 +25,9 @@ type Button struct {
 func NewButton(label string) (b *Button) {
 	b = new(Button)
 	b.Initialize()
-	// uik.Report(b.ID, "button")
+	if uik.ReportIDs {
+		uik.Report(b.ID, "button")
+	}
 
 	b.Size = geom.Coord{70, 30}
 
@@ -73,7 +75,7 @@ func (b *Button) Initialize() {
 	sh := uik.SizeHint{
 		MinSize:       cs,
 		PreferredSize: cs,
-		MaxSize:       cs,
+		MaxSize:       geom.Coord{math.Inf(1), math.Inf(1)},
 	}
 	b.SetSizeHint(sh)
 }

@@ -22,3 +22,5 @@ func Report(args ...interface{}) {
 	}
 	fmt.Println(ts)
 }
+
+const ReportIDs = false

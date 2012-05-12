@@ -18,6 +18,9 @@ type Checkbox struct {
 func NewCheckbox(size geom.Coord) (c *Checkbox) {
 	c = new(Checkbox)
 	c.Initialize()
+	if uik.ReportIDs {
+		uik.Report(c.ID, "checkbox")
+	}
 	c.Size = size
 
 	go c.handleEvents()

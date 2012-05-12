@@ -29,6 +29,9 @@ type Label struct {
 func NewLabel(size geom.Coord, data LabelData) (l *Label) {
 	l = new(Label)
 	l.Initialize()
+	if uik.ReportIDs {
+		uik.Report(l.ID, "label")
+	}
 
 	// uik.Report(l.ID, "label")
 

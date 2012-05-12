@@ -15,6 +15,7 @@ func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 		g.Add <- BlockData{
 			Block: b,
 			GridX: 0, GridY: i,
+			AnchorX: AnchorMin,
 		}
 	}
 	return
@@ -26,12 +27,13 @@ func HBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 		g.Add <- BlockData{
 			Block: b,
 			GridX: i, GridY: 0,
+			AnchorY: AnchorMin,
 		}
 	}
 	return
 }
 
-type Anchor float64
+type Anchor uint8
 
 const (
 	AnchorMin Anchor = 1 << iota
@@ -39,9 +41,10 @@ const (
 )
 
 type BlockData struct {
-	Block          *uik.Block
-	GridX, GridY   int
-	ExtraX, ExtraY int
+	Block            *uik.Block
+	GridX, GridY     int
+	ExtraX, ExtraY   int
+	AnchorX, AnchorY Anchor
 }
 
 type GridConfig struct {
@@ -72,6 +75,9 @@ func NewGrid(cfg GridConfig) (g *Grid) {
 	g.config = cfg
 
 	g.Initialize()
+	if uik.ReportIDs {
+		uik.Report(g.ID, "grid")
+	}
 
 	go g.handleEvents()
 
@@ -171,18 +177,58 @@ func (g *Grid) regrid() {
 				Y: maxYs[bd.GridY+bd.ExtraY],
 			},
 		}
+
 		gridSizeX, gridSizeY := gridBounds.Size()
 		if gridSizeX > csh.MaxSize.X {
-			gridBounds.Max.X = gridBounds.Min.X + csh.MaxSize.X
+			diff := gridSizeX - csh.MaxSize.X
+			if bd.AnchorX&AnchorMin != 0 && bd.AnchorX&AnchorMax != 0 {
+				gridBounds.Min.X += diff / 2
+				gridBounds.Max.X -= diff / 2
+			} else if bd.AnchorX&AnchorMin != 0 {
+				gridBounds.Max.X -= diff
+			} else if bd.AnchorX&AnchorMax != 0 {
+				gridBounds.Min.X += diff
+			}
 		}
 		if gridSizeY > csh.MaxSize.Y {
-			gridBounds.Max.Y = gridBounds.Min.Y + csh.MaxSize.Y
+			diff := gridSizeY - csh.MaxSize.Y
+			if bd.AnchorY&AnchorMin == 0 && bd.AnchorY&AnchorMax == 0 {
+				gridBounds.Min.Y += diff / 2
+				gridBounds.Max.Y -= diff / 2
+			} else if bd.AnchorY&AnchorMin != 0 {
+				gridBounds.Max.Y -= diff
+			} else if bd.AnchorY&AnchorMax != 0 {
+				gridBounds.Min.Y += diff
+			}
+		}
+
+		gridSizeX, gridSizeY = gridBounds.Size()
+		if gridSizeX > csh.PreferredSize.X {
+			diff := gridSizeX - csh.PreferredSize.X
+			if bd.AnchorX&AnchorMin != 0 && bd.AnchorX&AnchorMax != 0 {
+				gridBounds.Min.X += diff / 2
+				gridBounds.Max.X -= diff / 2
+			} else if bd.AnchorX&AnchorMin != 0 {
+				gridBounds.Max.X -= diff
+			} else if bd.AnchorX&AnchorMax != 0 {
+				gridBounds.Min.X += diff
+			}
+		}
+		if gridSizeY > csh.PreferredSize.Y {
+			diff := gridSizeY - csh.PreferredSize.Y
+			if bd.AnchorY&AnchorMin == 0 && bd.AnchorY&AnchorMax == 0 {
+				gridBounds.Min.Y += diff / 2
+				gridBounds.Max.Y -= diff / 2
+			} else if bd.AnchorY&AnchorMin != 0 {
+				gridBounds.Max.Y -= diff
+			} else if bd.AnchorY&AnchorMax != 0 {
+				gridBounds.Min.Y += diff
+			}
 		}
 
 		g.ChildrenBounds[child] = gridBounds
 
 		gridSizeX, gridSizeY = gridBounds.Size()
-
 		child.UserEventsIn <- uik.ResizeEvent{
 			Size: geom.Coord{gridSizeX, gridSizeY},
 		}

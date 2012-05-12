@@ -28,6 +28,9 @@ func NewEntry(size geom.Coord) (e *Entry) {
 	e = new(Entry)
 	e.Size = size
 	e.Initialize()
+	if uik.ReportIDs {
+		uik.Report(e.ID, "entry")
+	}
 
 	e.text = []rune("hello world")
 	e.cursor = len(e.text)

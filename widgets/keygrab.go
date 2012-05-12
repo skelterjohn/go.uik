@@ -17,6 +17,9 @@ type KeyGrab struct {
 func NewKeyGrab(size geom.Coord) (l *KeyGrab) {
 	l = new(KeyGrab)
 	l.Initialize()
+	if uik.ReportIDs {
+		uik.Report(l.ID, "keygrab")
+	}
 
 	l.Size = size
 	l.key = "x"
