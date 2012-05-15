@@ -48,7 +48,7 @@ The next step is to decide how the interface will work. I may change my mind lat
 Since the Radio, like all go.uik components, will be running its own goroutine, it's important to make sure data goes to and from it in a threadsafe manner. For go.uik, that means via a channel.
 
 
-...go
+```go
 type Radio struct {
 	uik.Foundation
 
@@ -64,7 +64,7 @@ type Radio struct {
 	getSelection chan int
 	GetSelection <-chan int
 }
-...
+```
 
 This might look a bit heavy, but the channels that are spelled the same with different capitalizations are the same channel. So, each bit of configurable data needs a channel to set it and to get it.
 
