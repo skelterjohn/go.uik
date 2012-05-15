@@ -94,11 +94,17 @@ func (b *Block) Draw(buffer draw.Image, invalidRects RectSet) {
 	b.DoPaint(gc)
 }
 
-func (b *Block) Invalidate() {
+func (b *Block) Invalidate(areas ...geom.Rect) {
 	// Report(b.ID, "invalidation")
-	b.Invalidations.Stack(Invalidation{
-		Bounds: b.Bounds(),
-	})
+	if len(areas) == 0 {
+		b.Invalidations.Stack(Invalidation{
+			Bounds: []geom.Rect{b.Bounds()},
+		})
+	} else {
+		b.Invalidations.Stack(Invalidation{
+			Bounds: areas,
+		})
+	}
 }
 
 func (b *Block) HandleEvent(e interface{}) {

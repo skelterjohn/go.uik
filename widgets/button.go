@@ -112,8 +112,8 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 	gc.Clear()
 
 	bbounds := geom.Rect{
-		Min: geom.Coord{2, 2},
-		Max: geom.Coord{b.Size.X - 2, b.Size.Y - 2},
+		Min: geom.Coord{0, 0},
+		Max: geom.Coord{b.Size.X, b.Size.Y},
 	}
 
 	// gc.SetStrokeColor(color.Black)
@@ -156,10 +156,10 @@ func (b *Button) handleEvents() {
 					b.Foundation.HandleEvent(e)
 				}
 				lbounds := b.Bounds()
-				lbounds.Min.X += 3
-				lbounds.Min.Y += 3
-				lbounds.Max.X -= 3
-				lbounds.Max.Y -= 3
+				lbounds.Min.X += 1
+				lbounds.Min.Y += 1
+				lbounds.Max.X -= 1
+				lbounds.Max.Y -= 1
 				b.ChildrenBounds[&b.Label.Block] = lbounds
 				b.Label.UserEventsIn <- uik.ResizeEvent{
 					Size: b.Size,

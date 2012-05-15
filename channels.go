@@ -42,7 +42,7 @@ func (ch InvalidationChan) Stack(e Invalidation) {
 		case ch <- e:
 			return
 		case ne := <-ch:
-			e.Bounds.ExpandToContainRect(ne.Bounds)
+			e.Bounds = append(e.Bounds, ne.Bounds...)
 		}
 	}
 }

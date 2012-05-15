@@ -110,7 +110,7 @@ type KeyTypedEvent struct {
 }
 
 type Invalidation struct {
-	Bounds geom.Rect
+	Bounds []geom.Rect
 }
 
 type SizeHint struct {

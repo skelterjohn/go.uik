@@ -199,11 +199,11 @@ func (f *Foundation) DoBlockInvalidation(e BlockInvalidation) {
 	if !ok {
 		return
 	}
-	invBounds := e.Bounds
-	invBounds.Translate(cbounds.Min)
-	f.Invalidations.Stack(Invalidation{
-		Bounds: invBounds,
-	})
+	for _, invBounds := range e.Bounds {
+		invBounds.Translate(cbounds.Min)
+		f.Invalidate(invBounds)
+
+	}
 }
 
 // internal events

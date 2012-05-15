@@ -226,7 +226,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 		case pane := <-wf.Pane:
 			wf.setPane(pane)
 		case inv := <-wf.Invalidations:
-			invalidRects = append(invalidRects, inv.Bounds)
+			invalidRects = append(invalidRects, inv.Bounds...)
 			if waitingForRepaint {
 				newStuff = true
 			} else {
