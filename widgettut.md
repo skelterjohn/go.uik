@@ -531,6 +531,8 @@ func (r *Radio) HandleEvents() {
 
 And that's it! The result isn't quite the vision outlined above. To do that, I'd have to implement some sort of margins for components in a grid, and that is a (simple) task for another day.
 
+The completed code is in go.uik/widgets/radio.go.
+
 The following program demonstrates the new ```Radio``` widget.
 
 ```go
