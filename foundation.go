@@ -44,8 +44,8 @@ type Foundation struct {
 	Children            map[*Block]bool
 	ChildrenBounds      map[*Block]geom.Rect
 	ChildrenLastBuffers map[*Block]image.Image
+	ChildrenHints       map[*Block]SizeHint
 
-	ChildrenHints  map[*Block]SizeHint
 	BlockSizeHints chan BlockSizeHint
 
 	BlockInvalidations chan BlockInvalidation
@@ -77,6 +77,7 @@ func (f *Foundation) RemoveBlock(b *Block) {
 	delete(f.Children, b)
 	delete(f.ChildrenBounds, b)
 	delete(f.ChildrenLastBuffers, b)
+	delete(f.ChildrenHints, b)
 	b.Parent = nil
 }
 

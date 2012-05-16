@@ -28,10 +28,21 @@ import (
 
 type Clicker chan wde.Button
 
+type ButtonConfig struct {
+	Color color.Color
+}
+
 type Button struct {
 	uik.Foundation
 	Label   *Label
 	pressed bool
+
+	config ButtonConfig
+
+	setConfig chan ButtonConfig
+	SetConfig chan<- ButtonConfig
+	getConfig chan ButtonConfig
+	GetConfig <-chan ButtonConfig
 
 	Clickers      map[Clicker]bool
 	AddClicker    chan Clicker
@@ -94,6 +105,11 @@ func (b *Button) Initialize() {
 		MaxSize:       geom.Coord{math.Inf(1), math.Inf(1)},
 	}
 	b.SetSizeHint(sh)
+
+	b.setConfig = make(chan ButtonConfig, 1)
+	b.SetConfig = b.setConfig
+	b.getConfig = make(chan ButtonConfig, 1)
+	b.GetConfig = b.getConfig
 }
 
 func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
@@ -122,7 +138,11 @@ func (b *Button) draw(gc draw2d.GraphicContext) {
 		safeRect(gc, bbounds.Min, bbounds.Max)
 		gc.Fill()
 	} else {
-		gc.SetFillColor(color.RGBA{200, 200, 200, 255})
+		if b.config.Color != nil {
+			gc.SetFillColor(b.config.Color)
+		} else {
+			gc.SetFillColor(color.RGBA{200, 200, 200, 255})
+		}
 		safeRect(gc, bbounds.Min, bbounds.Max)
 		gc.Fill()
 	}
@@ -184,7 +204,9 @@ func (b *Button) handleEvents() {
 			sh.MaxSize.X = math.Inf(1)
 			sh.MaxSize.Y = math.Inf(1)
 			b.SetSizeHint(sh)
-
+		case b.config = <-b.setConfig:
+			b.Invalidate()
+		case b.getConfig <- b.config:
 		}
 	}
 }
