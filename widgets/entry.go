@@ -186,6 +186,41 @@ func (e *Entry) cursorForCoord(p geom.Coord) (cursor int) {
 	return
 }
 
+func (e *Entry) getStartEndPositions() (start, end int) {
+	start, end = e.cursor-1, e.cursor
+	if e.selecting {
+		start = e.cursor
+		end = e.selectCursor
+		if end < start {
+			start, end = end, start
+		}
+	}
+	return start, end
+}
+
+func (e *Entry) insertRunes(runes []rune) {
+	start, end := e.cursor, e.cursor
+	if e.selecting {
+		end = e.selectCursor
+		if end < start {
+			start, end = end, start
+		}
+	}
+	head := e.text[:start]
+	tail := e.text[end:]
+	e.text = make([]rune, len(head)+len(tail)+1)[:0]
+	e.text = append(e.text, head...)
+
+	newslice := make([]rune, len(e.text)+len(runes))
+	copy(newslice, e.text)
+	copy(newslice[len(e.text):], runes)
+	e.text = newslice
+
+	e.text = append(e.text, tail...)
+	e.cursor = start + len(runes)
+	e.selecting = false
+}
+
 func (e *Entry) handleEvents() {
 	for {
 		select {
@@ -214,23 +249,27 @@ func (e *Entry) handleEvents() {
 					e.Invalidate()
 				}
 			case uik.KeyTypedEvent:
-
 				// uik.Report("key", ev.Code, ev.Letter)
-				if ev.Glyph != "" {
-					start, end := e.cursor, e.cursor
-					if e.selecting {
-						end = e.selectCursor
-						if end < start {
-							start, end = end, start
-						}
+				if ev.Chord == wde.CutChord {
+					if len(e.text) == 0 || !e.selecting {
+						break
 					}
-					head := e.text[:start]
-					tail := e.text[end:]
-					e.text = make([]rune, len(head)+len(tail)+1)[:0]
-					e.text = append(e.text, head...)
-					e.text = append(e.text, []rune(ev.Glyph)[0])
-					e.text = append(e.text, tail...)
-					e.cursor = start + 1
+					start, end := e.getStartEndPositions()
+					wde.SetClipboardText(string(e.text[start:end]))
+					copy(e.text[start:], e.text[end:])
+					e.text = e.text[:len(e.text)-(end-start)]
+					e.cursor = start
+					e.selecting = false
+				} else if ev.Chord == wde.PasteChord {
+					e.insertRunes([]rune(wde.GetClipboardText()))
+				} else if ev.Chord == wde.CopyChord {
+					if len(e.text) == 0 || !e.selecting {
+						break
+					}
+					start, end := e.getStartEndPositions()
+					wde.SetClipboardText(string(e.text[start:end]))
+				} else if ev.Glyph != "" {
+					e.insertRunes([]rune(ev.Glyph))
 				} else {
 					switch ev.Key {
 					case wde.KeyBackspace:
@@ -240,17 +279,11 @@ func (e *Entry) handleEvents() {
 						if !e.selecting && e.cursor == 0 {
 							break
 						}
-						start, end := e.cursor-1, e.cursor
-						if e.selecting {
-							start = e.cursor
-							end = e.selectCursor
-							if end < start {
-								start, end = end, start
-							}
-						}
+						start, end := e.getStartEndPositions()
 						copy(e.text[start:], e.text[end:])
 						e.text = e.text[:len(e.text)-(end-start)]
 						e.cursor = start
+						e.selecting = false
 					case wde.KeyDelete:
 						if len(e.text) == 0 {
 							break
@@ -258,28 +291,23 @@ func (e *Entry) handleEvents() {
 						if !e.selecting && e.cursor == len(e.text) {
 							break
 						}
-						start, end := e.cursor, e.cursor+1
-						if e.selecting {
-							start = e.cursor
-							end = e.selectCursor
-							if end < start {
-								start, end = end, start
-							}
-						}
+						start, end := e.getStartEndPositions()
 						copy(e.text[start:], e.text[end:])
 						e.text = e.text[:len(e.text)-(end-start)]
 						e.cursor = start
+						e.selecting = false
 					case wde.KeyLeftArrow:
 						if e.cursor > 0 {
 							e.cursor--
 						}
+						e.selecting = false
 					case wde.KeyRightArrow:
 						if e.cursor < len(e.text) {
 							e.cursor++
 						}
+						e.selecting = false
 					}
 				}
-				e.selecting = false
 				e.render()
 				e.Invalidate()
 			case uik.KeyFocusEvent:
