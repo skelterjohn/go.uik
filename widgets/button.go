@@ -171,24 +171,21 @@ func (b *Button) handleEvents() {
 				}
 				b.Invalidate()
 				// go uik.ShowBuffer("button buffer", b.Buffer)
-			case uik.ResizeEvent:
-				if b.Size != e.Size {
-					b.Foundation.HandleEvent(e)
-				}
-				lbounds := b.Bounds()
-				lbounds.Min.X += 1
-				lbounds.Min.Y += 1
-				lbounds.Max.X -= 1
-				lbounds.Max.Y -= 1
-				b.ChildrenBounds[&b.Label.Block] = lbounds
-				b.Label.UserEventsIn <- uik.ResizeEvent{
-					Size: b.Size,
-				}
 			default:
 				b.Foundation.HandleEvent(e)
 			}
 		case <-b.BlockInvalidations:
 			b.Invalidate()
+		case e := <-b.ResizeEvents:
+			if b.Size != e.Size {
+				b.Foundation.DoResizeEvent(e)
+			}
+			lbounds := b.Bounds()
+			lbounds.Min.X += 1
+			lbounds.Min.Y += 1
+			lbounds.Max.X -= 1
+			lbounds.Max.Y -= 1
+			b.PlaceBlock(&b.Label.Block, lbounds)
 		case c := <-b.AddClicker:
 			b.Clickers[c] = true
 		case c := <-b.RemoveClicker:

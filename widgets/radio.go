@@ -79,6 +79,9 @@ func (r *Radio) HandleEvents() {
 		select {
 		case e := <-r.UserEvents:
 			r.HandleEvent(e)
+		case e := <-r.ResizeEvents:
+			r.Foundation.DoResizeEvent(e)
+			r.PlaceBlock(&r.radioGrid.Block, geom.Rect{Max: r.Size})
 		case options := <-r.setOptions:
 			r.makeButtons(options)
 		case r.selection = <-r.setSelection:
@@ -118,9 +121,6 @@ func (r *Radio) HandleEvents() {
 
 func (r *Radio) HandleEvent(e interface{}) {
 	switch e := e.(type) {
-	case uik.ResizeEvent:
-		r.Foundation.HandleEvent(e)
-		r.PlaceBlock(&r.radioGrid.Block, geom.Rect{Max: r.Size})
 	default:
 		r.Foundation.HandleEvent(e)
 	}

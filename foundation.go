@@ -125,7 +125,7 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 	// Report(f.ID, "placing", b.ID)
 	f.AddBlock(b)
 	f.ChildrenBounds[b] = bounds
-	b.UserEventsIn.SendOrDrop(ResizeEvent{
+	b.ResizeEvents.Stack(ResizeEvent{
 		Size: geom.Coord{bounds.Max.X - bounds.Min.X, bounds.Max.Y - bounds.Min.Y},
 	})
 }
@@ -209,14 +209,6 @@ func (f *Foundation) DoBlockInvalidation(e BlockInvalidation) {
 
 // internal events
 
-func (f *Foundation) DoResizeEvent(e ResizeEvent) {
-	if e.Size == f.Size {
-		return
-	}
-	f.Size = e.Size
-	f.Invalidate()
-}
-
 func (f *Foundation) KeyFocusRequest(e KeyFocusRequest) {
 	if e.Block == nil {
 		return
@@ -257,8 +249,6 @@ func (f *Foundation) HandleEvent(e interface{}) {
 		f.DoMouseDraggedEvent(e)
 	case MouseMovedEvent:
 		f.DoMouseMovedEvent(e)
-	case ResizeEvent:
-		f.DoResizeEvent(e)
 	case KeyFocusEvent:
 		f.DoKeyFocusEvent(e)
 	case KeyFocusRequest:
@@ -278,6 +268,8 @@ func (f *Foundation) HandleEvents() {
 			f.HandleEvent(e)
 		case e := <-f.BlockInvalidations:
 			f.DoBlockInvalidation(e)
+		case e := <-f.ResizeEvents:
+			f.DoResizeEvent(e)
 		}
 	}
 }

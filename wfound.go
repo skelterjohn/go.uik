@@ -88,31 +88,6 @@ func (wf *WindowFoundation) Show() {
 	wf.Invalidate()
 }
 
-func (wf *WindowFoundation) HandleEvent(e interface{}) {
-	switch e := e.(type) {
-	case ResizeEvent:
-		wf.DoResizeEvent(e)
-		if wf.pane != nil {
-			wf.pane.UserEventsIn.SendOrDrop(e)
-		}
-		wf.ChildrenBounds[wf.pane] = geom.Rect{geom.Coord{}, e.Size}
-	default:
-		wf.Foundation.HandleEvent(e)
-	}
-}
-
-// dispense events to children, as appropriate
-// func (wf *WindowFoundation) HandleEvents() {
-// 	for {
-// 		select {
-// 		case e := <-wf.UserEvents:
-// 			wf.HandleEvent(e)
-// 		case e := <-wf.BlockInvalidations:
-// 			wf.DoBlockInvalidation(e)
-// 		}
-// 	}
-// }
-
 // wraps mouse events with float64 coordinates
 func (wf *WindowFoundation) handleWindowEvents() {
 	for e := range wf.W.EventChan() {
@@ -194,9 +169,7 @@ func (wf *WindowFoundation) handleWindowEvents() {
 				KeyTypedEvent: e,
 			})
 		case wde.ResizeEvent:
-			wf.UserEventsIn.SendOrDrop(ResizeEvent{
-				Event:       ev,
-				ResizeEvent: e,
+			wf.ResizeEvents.Stack(ResizeEvent{
 				Size: geom.Coord{
 					X: float64(e.Width),
 					Y: float64(e.Height),

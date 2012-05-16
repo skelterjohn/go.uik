@@ -88,12 +88,6 @@ type CloseEvent struct {
 	wde.CloseEvent
 }
 
-type ResizeEvent struct {
-	Event
-	wde.ResizeEvent
-	Size geom.Coord
-}
-
 type KeyDownEvent struct {
 	Event
 	wde.KeyDownEvent
@@ -128,4 +122,8 @@ type KeyFocusRequest struct {
 
 type KeyFocusEvent struct {
 	Focus bool
+}
+
+type ResizeEvent struct {
+	Size geom.Coord
 }

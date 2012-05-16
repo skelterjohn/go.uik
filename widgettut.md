@@ -235,7 +235,7 @@ Notice that we aren't passing the ```layouts.Grid``` itself, but rather the ```u
 
 Where a classical UI toolkit might use inheritance and polymorphism to define how a component differs from its ancestor in how it responds to user input, in go.uik the channels are read by a different goroutine, which can call the embedded helper ```.HandleEvent()``` methods in default cases.
 
-One event we'll want to handle differently is the ```uik.ResizeEvent```. This isn't exactly user input, so it might one day no longer come in on the ```.UserEvents``` channel, but for now that's where it goes. When the ```Radio``` is resized, we'll want to place ```.radioGrid``` in such a way that it takes up the entirety of the ```Radio```.
+One event we'll want to handle differently is the ```uik.ResizeEvent```. This isn't exactly user input, so it might one day no longer come in on the ```.UserEvents``` channel, but for now that's where it goes (_update: that day has come. there is now a .ResizeEvents channel dedicated to this important event type_). When the ```Radio``` is resized, we'll want to place ```.radioGrid``` in such a way that it takes up the entirety of the ```Radio```.
 
 To do this, we'll add a case in ```.HandleEvent()```.
 

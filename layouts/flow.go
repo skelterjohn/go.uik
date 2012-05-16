@@ -54,17 +54,6 @@ func (f *Flow) Initialize() {
 	f.childIndices = map[*uik.Block]int{}
 }
 
-// places the block immediately to the right of the last block placed
-func (f *Flow) PlaceBlock(b *uik.Block) {
-	f.AddBlock(b)
-
-	f.ChildrenBounds[b] = geom.Rect{
-		Min: geom.Coord{f.size.X, 0},
-		Max: geom.Coord{f.size.X + b.Size.X, b.Size.Y},
-	}
-	f.size.X += b.Size.X
-}
-
 func (f *Flow) reflow() {
 	children := make([]*uik.Block, f.count)
 	for child, i := range f.childIndices {
@@ -98,11 +87,9 @@ func (f *Flow) reflow() {
 			cbounds.Max.Y = csh.MinSize.Y
 		}
 		cbounds.Max.X = left + ratioX*csh.PreferredSize.X
-		f.ChildrenBounds[child] = cbounds
 
-		child.UserEventsIn <- uik.ResizeEvent{
-			Size: geom.Coord{cbounds.Max.X - cbounds.Min.X, cbounds.Max.Y},
-		}
+		f.PlaceBlock(child, cbounds)
+
 		//fmt.Println("flow", cbounds.Width(), cbounds.Height())
 		left = cbounds.Max.X
 	}
@@ -116,9 +103,6 @@ func (f *Flow) HandleEvents() {
 		select {
 		case e := <-f.UserEvents:
 			switch e := e.(type) {
-			case uik.ResizeEvent:
-				f.Size = e.Size
-				f.reflow()
 			default:
 				f.Foundation.HandleEvent(e)
 			}
@@ -152,12 +136,15 @@ func (f *Flow) HandleEvents() {
 
 			f.reflow()
 
+		case e := <-f.ResizeEvents:
+			f.Size = e.Size
+			f.reflow()
+
 		case b := <-f.Add:
-			f.PlaceBlock(b)
 			f.childIndices[b] = f.count
 			f.count++
 
-			// f.reflow()
+			f.reflow()
 		case b := <-f.Remove:
 			i, ok := f.childIndices[b]
 			if !ok {

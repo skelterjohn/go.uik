@@ -98,16 +98,16 @@ func (i *Image) handleEvents() {
 		select {
 		case e := <-i.UserEvents:
 			switch e := e.(type) {
-			case uik.ResizeEvent:
-				if i.Size == e.Size {
-					break
-				}
-				i.Block.HandleEvent(e)
-				i.Invalidate()
-				// go uik.ShowBuffer("label buffer", l.Buffer)
 			default:
 				i.HandleEvent(e)
 			}
+		case e := <-i.ResizeEvents:
+			if i.Size == e.Size {
+				break
+			}
+			i.Block.DoResizeEvent(e)
+			i.Invalidate()
+			// go uik.ShowBuffer("label buffer", l.Buffer)
 		case config := <-i.setConfig:
 			if i.config == config {
 				break

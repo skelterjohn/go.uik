@@ -268,12 +268,7 @@ func (g *Grid) regrid() {
 			}
 		}
 
-		g.ChildrenBounds[child] = gridBounds
-
-		gridSizeX, gridSizeY = gridBounds.Size()
-		child.UserEventsIn <- uik.ResizeEvent{
-			Size: geom.Coord{gridSizeX, gridSizeY},
-		}
+		g.PlaceBlock(child, gridBounds)
 	}
 
 	g.Invalidate()
@@ -320,10 +315,6 @@ func (g *Grid) handleEvents() {
 		select {
 		case e := <-g.UserEvents:
 			switch e := e.(type) {
-			case uik.ResizeEvent:
-				g.Size = e.Size
-				g.regrid()
-				g.Invalidate()
 			default:
 				g.Foundation.HandleEvent(e)
 			}
@@ -341,6 +332,10 @@ func (g *Grid) handleEvents() {
 		case e := <-g.BlockInvalidations:
 			g.DoBlockInvalidation(e)
 			// go uik.ShowBuffer("grid", g.Buffer)
+		case e := <-g.ResizeEvents:
+			g.Size = e.Size
+			g.regrid()
+			g.Invalidate()
 		case g.config = <-g.setConfig:
 			g.vflex = nil
 			g.makePreferences()

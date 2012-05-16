@@ -136,3 +136,18 @@ func (ch KeyFocusChan) Stack(b *Block) {
 		}
 	}
 }
+
+type ResizeChan chan ResizeEvent
+
+func (ch ResizeChan) Stack(e ResizeEvent) {
+	if ch == nil {
+		return
+	}
+	for {
+		select {
+		case <-ch:
+		case ch <- e:
+			return
+		}
+	}
+}

@@ -189,6 +189,8 @@ func (e *Entry) cursorForCoord(p geom.Coord) (cursor int) {
 func (e *Entry) handleEvents() {
 	for {
 		select {
+		case ev := <-e.ResizeEvents:
+			e.DoResizeEvent(ev)
 		case ev := <-e.UserEvents:
 			switch ev := ev.(type) {
 			case uik.MouseDownEvent:

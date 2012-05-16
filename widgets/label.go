@@ -104,16 +104,16 @@ func (l *Label) handleEvents() {
 		select {
 		case e := <-l.UserEvents:
 			switch e := e.(type) {
-			case uik.ResizeEvent:
-				if l.Size == e.Size {
-					break
-				}
-				l.Block.HandleEvent(e)
-				l.Invalidate()
-				// go uik.ShowBuffer("label buffer", l.Buffer)
 			default:
 				l.HandleEvent(e)
 			}
+		case e := <-l.ResizeEvents:
+			if l.Size == e.Size {
+				break
+			}
+			l.Block.DoResizeEvent(e)
+			l.Invalidate()
+			// go uik.ShowBuffer("label buffer", l.Buffer)
 		case data := <-l.setConfig:
 			if l.data == data {
 				break

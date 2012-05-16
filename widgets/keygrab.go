@@ -99,6 +99,8 @@ func (l *KeyGrab) handleEvents() {
 			default:
 				l.HandleEvent(e)
 			}
+		case e := <-l.ResizeEvents:
+			l.DoResizeEvent(e)
 		}
 	}
 }

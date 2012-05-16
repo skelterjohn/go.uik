@@ -53,7 +53,7 @@ type Block struct {
 	UserEventsIn DropChan
 	UserEvents   <-chan interface{}
 
-	DrawEvents DropChan
+	ResizeEvents ResizeChan
 
 	Subscribe chan<- Subscription
 
@@ -82,6 +82,7 @@ func (b *Block) Initialize() {
 
 	b.UserEventsIn, b.UserEvents, b.Subscribe = SubscriptionQueue(20)
 
+	b.ResizeEvents = make(ResizeChan, 1)
 	b.placementNotifications = make(placementNotificationChan, 1)
 	b.setSizeHint = make(SizeHintChan, 1)
 
@@ -109,8 +110,6 @@ func (b *Block) Invalidate(areas ...geom.Rect) {
 
 func (b *Block) HandleEvent(e interface{}) {
 	switch e := e.(type) {
-	case ResizeEvent:
-		b.Size = e.Size
 	case KeyFocusEvent:
 		b.HasKeyFocus = e.Focus
 	}
@@ -145,4 +144,12 @@ func (b *Block) DoPaint(gc draw2d.GraphicContext) {
 	if b.Paint != nil {
 		b.Paint(gc)
 	}
+}
+
+func (b *Block) DoResizeEvent(e ResizeEvent) {
+	if e.Size == b.Size {
+		return
+	}
+	b.Size = e.Size
+	b.Invalidate()
 }
