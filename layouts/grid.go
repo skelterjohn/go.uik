@@ -122,6 +122,7 @@ func (g *Grid) Initialize() {
 	g.getConfig = make(chan GridConfig, 1)
 	g.GetConfig = g.getConfig
 
+	// p.Paint = nil
 	// g.Paint = func(gc draw2d.GraphicContext) {
 	// 	g.draw(gc)
 	// }

@@ -23,9 +23,11 @@ import (
 )
 
 func ClearPaint(gc draw2d.GraphicContext) {
-	gc.Clear()
-	gc.SetFillColor(color.RGBA{155, 0, 0, 255})
-	gc.Fill()
+	if true {
+		gc.Clear()
+		gc.SetFillColor(color.RGBA{155, 0, 0, 255})
+		gc.Fill()
+	}
 }
 
 func ZeroRGBA(rgba *image.RGBA) {

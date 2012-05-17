@@ -77,9 +77,9 @@ func (r *Radio) Initialize() {
 
 	r.radioGrid = layouts.NewGrid(layouts.GridConfig{})
 	r.AddBlock(&r.radioGrid.Block)
+	r.radioGrid.Paint = nil
 
 	r.Paint = func(gc draw2d.GraphicContext) {
-		// uik.Report("drawing")
 		gc.SetFillColor(color.Black)
 		bbounds := r.Bounds()
 		safeRect(gc, bbounds.Min, bbounds.Max)

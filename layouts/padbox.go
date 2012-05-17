@@ -1,10 +1,8 @@
 package layouts
 
 import (
-	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
-	// "image/color"
 )
 
 type PadConfig struct {
@@ -39,9 +37,7 @@ func NewPadBox(config PadConfig, block *uik.Block) (p *PadBox) {
 func (p *PadBox) Initialize() {
 	p.Foundation.Initialize()
 
-	p.Paint = func(gc draw2d.GraphicContext) {
-
-	}
+	p.Paint = nil
 }
 
 func (p *PadBox) HandleEvents() {
