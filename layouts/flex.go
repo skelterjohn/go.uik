@@ -17,9 +17,16 @@
 package layouts
 
 import (
-	// "github.com/skelterjohn/go.uik"
+	"fmt"
 	"math"
 )
+
+func r(x ...interface{}) {
+	if false {
+		fmt.Print("flex ")
+		fmt.Println(x...)
+	}
+}
 
 type elem struct {
 	index, extra               int
@@ -205,6 +212,7 @@ func (f *flex) makePref(which int) (size float64) {
 func (f *flex) makePrefs() (min, pref, max float64) {
 	min = f.makePref(0)
 	pref = f.makePref(1)
+	r(pref)
 	max = f.makePref(2)
 	return
 }

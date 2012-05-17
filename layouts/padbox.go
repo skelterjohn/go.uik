@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
+	// "image/color"
 )
 
 type PadConfig struct {
@@ -23,6 +24,10 @@ func NewPadBox(config PadConfig, block *uik.Block) (p *PadBox) {
 	p.block = block
 
 	p.Initialize()
+
+	if uik.ReportIDs {
+		uik.Report(p.ID, "padbox")
+	}
 
 	p.AddBlock(block)
 

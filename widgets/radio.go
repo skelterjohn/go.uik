@@ -47,6 +47,10 @@ func NewRadio(options []string) (r *Radio) {
 	r = new(Radio)
 	r.Initialize()
 
+	if uik.ReportIDs {
+		uik.Report(r.ID, "radio")
+	}
+
 	go r.HandleEvents()
 
 	r.SetOptions <- options
@@ -78,7 +82,6 @@ func (r *Radio) Initialize() {
 		// uik.Report("drawing")
 		gc.SetFillColor(color.Black)
 		bbounds := r.Bounds()
-		// uik.Report(bbounds)
 		safeRect(gc, bbounds.Min, bbounds.Max)
 		gc.Fill()
 	}
@@ -109,14 +112,7 @@ func (r *Radio) HandleEvents() {
 				// who is this?
 				break
 			}
-			sh := bsh.SizeHint
-			if r.Size.X <= sh.MaxSize.X && r.Size.X >= sh.MinSize.X {
-				sh.PreferredSize.X = r.Size.X
-			}
-			if r.Size.Y <= sh.MaxSize.Y && r.Size.Y >= sh.MinSize.Y {
-				sh.PreferredSize.Y = r.Size.Y
-			}
-			r.SetSizeHint(sh)
+			r.SetSizeHint(bsh.SizeHint)
 		case inv := <-r.BlockInvalidations:
 			r.Invalidate(inv.Bounds...)
 		case selLis := <-r.addSelectionListener:

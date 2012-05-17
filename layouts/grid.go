@@ -333,7 +333,6 @@ func (g *Grid) handleEvents() {
 			g.ChildrenHints[bsh.Block] = bsh.SizeHint
 
 			g.vflex = nil
-
 			g.makePreferences()
 			g.regrid()
 		case e := <-g.BlockInvalidations:
