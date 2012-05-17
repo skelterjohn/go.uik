@@ -57,10 +57,15 @@ const (
 )
 
 type BlockData struct {
-	Block                           *uik.Block
-	GridX, GridY                    int
-	ExtraX, ExtraY                  int
-	AnchorX, AnchorY                Anchor
+	Block *uik.Block
+	// The coordinates for the top-left of the block's placement
+	GridX, GridY int
+	// How many extra columns and rows the block occupies
+	ExtraX, ExtraY int
+	// AnchorX and AnchorY get the bit flags from AnchorMin and AnchorMax. The
+	// zero value means they will float in the center.
+	AnchorX, AnchorY Anchor
+	// The zero-values for MinSize, PreferredSize and MaxSize tell the grid to ignore them
 	MinSize, PreferredSize, MaxSize geom.Coord
 }
 
@@ -156,6 +161,7 @@ func (g *Grid) reflex() {
 			prefSize: csh.PreferredSize.X,
 			maxSize:  math.Inf(1),
 		}
+
 		if bd.MinSize.X != 0 {
 			helem.minSize = math.Max(bd.MinSize.X, helem.minSize)
 		}
@@ -175,6 +181,7 @@ func (g *Grid) reflex() {
 			prefSize: csh.PreferredSize.Y,
 			maxSize:  math.Inf(1),
 		}
+
 		if bd.MinSize.Y != 0 {
 			velem.minSize = math.Max(bd.MinSize.Y, velem.minSize)
 		}

@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	"code.google.com/p/draw2d/draw2d"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
 	"github.com/skelterjohn/go.uik/layouts"
@@ -72,6 +73,15 @@ func (r *Radio) Initialize() {
 
 	r.radioGrid = layouts.NewGrid(layouts.GridConfig{})
 	r.AddBlock(&r.radioGrid.Block)
+
+	r.Paint = func(gc draw2d.GraphicContext) {
+		// uik.Report("drawing")
+		gc.SetFillColor(color.Black)
+		bbounds := r.Bounds()
+		// uik.Report(bbounds)
+		safeRect(gc, bbounds.Min, bbounds.Max)
+		gc.Fill()
+	}
 }
 
 func (r *Radio) HandleEvents() {
@@ -156,8 +166,13 @@ func (r *Radio) makeButtons(options []string) {
 		r.buttons[i] = ob
 		r.buttonsDone[i] = make(chan bool, 1)
 
+		pb := layouts.NewPadBox(layouts.PadConfig{
+			MinX: 2, MinY: 2,
+			MaxX: 2, MaxY: 2,
+		}, &ob.Block)
+
 		r.radioGrid.Add <- layouts.BlockData{
-			Block: &ob.Block,
+			Block: &pb.Block,
 			GridX: 0, GridY: i,
 		}
 

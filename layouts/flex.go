@@ -17,7 +17,7 @@
 package layouts
 
 import (
-	// "fmt"
+	// "github.com/skelterjohn/go.uik"
 	"math"
 )
 
@@ -45,7 +45,7 @@ func (f *flex) add(e *elem) {
 }
 
 func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
-	// fmt.Println("constrain", length)
+	// uik.Report("constrain", length)
 	type item struct {
 		extra                      int
 		minSize, prefSize, maxSize float64

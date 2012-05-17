@@ -30,7 +30,6 @@ type Flow struct {
 
 	count int
 
-	size     geom.Coord
 	sizeHint uik.SizeHint
 
 	Add    chan *uik.Block
