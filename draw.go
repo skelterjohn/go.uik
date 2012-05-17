@@ -18,11 +18,8 @@ package uik
 
 import (
 	"code.google.com/p/draw2d/draw2d"
-	"github.com/skelterjohn/go.wde"
-	"github.com/skelterjohn/go.wde/xgb"
 	"image"
 	"image/color"
-	"image/draw"
 )
 
 func ClearPaint(gc draw2d.GraphicContext) {
@@ -42,6 +39,7 @@ func ZeroRGBA(rgba *image.RGBA) {
 	}
 }
 
+/*
 func ShowBuffer(title string, buffer image.Image) {
 	if buffer == nil {
 		return
@@ -77,3 +75,4 @@ loop:
 	}
 	w.Close()
 }
+*/
