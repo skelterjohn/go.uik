@@ -79,7 +79,8 @@ type Grid struct {
 	childrenBlockData map[*uik.Block]BlockData
 	config            GridConfig
 
-	vflex, hflex *flex
+	vflex, hflex   *flex
+	velems, helems map[*uik.Block]*elem
 
 	Add       chan<- BlockData
 	add       chan BlockData
