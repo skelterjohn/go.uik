@@ -112,6 +112,8 @@ func (r *Radio) HandleEvents() {
 				// who is this?
 				break
 			}
+			// uik.Report("gotpr", r.Block.ID, bsh.Block.ID, bsh.SizeHint)
+			// uik.Report("prefs", r.Block.ID, bsh.SizeHint)
 			r.SetSizeHint(bsh.SizeHint)
 		case inv := <-r.BlockInvalidations:
 			r.Invalidate(inv.Bounds...)

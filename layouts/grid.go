@@ -123,99 +123,103 @@ func (g *Grid) Initialize() {
 	g.getConfig = make(chan GridConfig, 1)
 	g.GetConfig = g.getConfig
 
-	// p.Paint = nil
-	// g.Paint = func(gc draw2d.GraphicContext) {
-	// 	g.draw(gc)
-	// }
+	g.hflex = &flex{}
+	g.vflex = &flex{}
+
+	g.helems = map[*uik.Block]*elem{}
+	g.velems = map[*uik.Block]*elem{}
+
 }
 
 func (g *Grid) addBlock(bd BlockData) {
 	g.AddBlock(bd.Block)
 	g.children[bd.Block] = true
 	g.childrenBlockData[bd.Block] = bd
-	g.vflex = nil
-	g.regrid()
+
+	helem := &elem{
+		index: bd.GridX,
+		extra: bd.ExtraX,
+	}
+	g.helems[bd.Block] = helem
+	velem := &elem{
+		index: bd.GridY,
+		extra: bd.ExtraY,
+	}
+	g.velems[bd.Block] = velem
+
+	g.hflex.add(helem)
+	g.vflex.add(velem)
 }
 
 func (g *Grid) remBlock(b *uik.Block) {
 	if !g.children[b] {
 		return
 	}
+	g.RemoveBlock(b)
+
 	delete(g.ChildrenHints, b)
 	delete(g.childrenBlockData, b)
-	g.vflex = nil
+
+	g.hflex.rem(g.helems[b])
+	g.vflex.rem(g.velems[b])
+
 	g.regrid()
 }
 
-func (g *Grid) reflex() {
-	if g.vflex != nil {
-		return
+func (g *Grid) reflex(b *uik.Block) {
+	bd := g.childrenBlockData[b]
+	sh := g.ChildrenHints[b]
+
+	helem := g.helems[bd.Block]
+	helem.minSize = sh.MinSize.X
+	helem.prefSize = sh.PreferredSize.X
+	helem.maxSize = math.Inf(1) //sh.MaxSize.X
+	if bd.MinSize.X != 0 {
+		helem.minSize = math.Max(bd.MinSize.X, helem.minSize)
 	}
-	g.hflex = &flex{}
-	g.vflex = &flex{}
-	for _, bd := range g.childrenBlockData {
-		csh := g.ChildrenHints[bd.Block]
-
-		helem := elem{
-			index:    bd.GridX,
-			extra:    bd.ExtraX,
-			minSize:  csh.MinSize.X,
-			prefSize: csh.PreferredSize.X,
-			maxSize:  math.Inf(1),
-		}
-
-		if bd.MinSize.X != 0 {
-			helem.minSize = math.Max(bd.MinSize.X, helem.minSize)
-		}
-		if bd.PreferredSize.X != 0 {
-			helem.prefSize = bd.PreferredSize.X
-		}
-		if bd.MaxSize.X != 0 {
-			helem.maxSize = math.Min(bd.MaxSize.X, helem.maxSize)
-		}
-		helem.prefSize = math.Min(helem.maxSize, math.Max(helem.minSize, helem.prefSize))
-		g.hflex.add(&helem)
-
-		velem := elem{
-			index:    bd.GridY,
-			extra:    bd.ExtraY,
-			minSize:  csh.MinSize.Y,
-			prefSize: csh.PreferredSize.Y,
-			maxSize:  math.Inf(1),
-		}
-
-		if bd.MinSize.Y != 0 {
-			velem.minSize = math.Max(bd.MinSize.Y, velem.minSize)
-		}
-		if bd.PreferredSize.Y != 0 {
-			velem.prefSize = bd.PreferredSize.Y
-		}
-		if bd.MaxSize.Y != 0 {
-			velem.maxSize = math.Min(bd.MaxSize.Y, velem.maxSize)
-		}
-		velem.prefSize = math.Min(velem.maxSize, math.Max(velem.minSize, velem.prefSize))
-		g.vflex.add(&velem)
+	if bd.PreferredSize.X != 0 {
+		helem.prefSize = bd.PreferredSize.X
 	}
+	if bd.MaxSize.X != 0 {
+		helem.maxSize = math.Min(bd.MaxSize.X, helem.maxSize)
+	}
+	helem.prefSize = math.Min(helem.maxSize, math.Max(helem.minSize, helem.prefSize))
+	helem.fix()
+
+	velem := g.velems[bd.Block]
+	velem.minSize = sh.MinSize.Y
+	velem.prefSize = sh.PreferredSize.Y
+	velem.maxSize = math.Inf(1) //sh.MaxSize.Y
+	if bd.MinSize.Y != 0 {
+		velem.minSize = math.Max(bd.MinSize.Y, velem.minSize)
+	}
+	if bd.PreferredSize.Y != 0 {
+		velem.prefSize = bd.PreferredSize.Y
+	}
+	if bd.MaxSize.Y != 0 {
+		velem.maxSize = math.Min(bd.MaxSize.Y, velem.maxSize)
+	}
+	velem.prefSize = math.Min(velem.maxSize, math.Max(velem.minSize, velem.prefSize))
+	velem.fix()
 }
 
 func (g *Grid) makePreferences() {
 	var sizeHint uik.SizeHint
-	g.reflex()
 	hmin, hpref, hmax := g.hflex.makePrefs()
 	vmin, vpref, vmax := g.vflex.makePrefs()
 	sizeHint.MinSize = geom.Coord{hmin, vmin}
 	sizeHint.PreferredSize = geom.Coord{hpref, vpref}
 	sizeHint.MaxSize = geom.Coord{hmax, vmax}
+	// uik.Report("prefs", g.Block.ID, sizeHint)
 	g.SetSizeHint(sizeHint)
 }
 
 func (g *Grid) regrid() {
-
-	g.reflex()
-
 	_, minXs, maxXs := g.hflex.constrain(g.Size.X)
 	_, minYs, maxYs := g.vflex.constrain(g.Size.Y)
-
+	// if g.Block.ID == 2 {
+	// 	uik.Report("regrid", g.Block.ID, g.Size, whs, wvs)
+	// }
 	for child, csh := range g.ChildrenHints {
 		bd := g.childrenBlockData[child]
 		gridBounds := geom.Rect{
@@ -301,8 +305,6 @@ func (g *Grid) draw(gc draw2d.GraphicContext) {
 	safeRect(gc, geom.Coord{0, 0}, g.Size)
 	gc.FillStroke()
 
-	g.reflex()
-
 	_, minXs, _ := g.hflex.constrain(g.Size.X)
 	for _, x := range minXs[1:] {
 		gc.MoveTo(x, 0)
@@ -334,7 +336,10 @@ func (g *Grid) handleEvents() {
 			}
 			g.ChildrenHints[bsh.Block] = bsh.SizeHint
 
-			g.vflex = nil
+			// if g.Block.ID == 2 {
+			// 	uik.Report("gotpr", g.Block.ID, bsh.Block.ID, bsh.SizeHint)
+			// }
+			g.reflex(bsh.Block)
 			g.makePreferences()
 			g.regrid()
 		case e := <-g.BlockInvalidations:
@@ -342,20 +347,19 @@ func (g *Grid) handleEvents() {
 			// go uik.ShowBuffer("grid", g.Buffer)
 		case e := <-g.ResizeEvents:
 			g.Size = e.Size
+
+			// if g.Block.ID == 2 {
+			// 	uik.Report("sized", g.Block.ID, g.Size)
+			// }
 			g.regrid()
 			g.Invalidate()
 		case g.config = <-g.setConfig:
-			g.vflex = nil
 			g.makePreferences()
 		case g.getConfig <- g.config:
 		case bd := <-g.add:
 			g.addBlock(bd)
-			g.vflex = nil
-			g.makePreferences()
 		case b := <-g.remove:
 			g.remBlock(b)
-			g.vflex = nil
-			g.makePreferences()
 		}
 	}
 }

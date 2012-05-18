@@ -107,6 +107,16 @@ func (f *Foundation) AddBlock(b *Block) {
 
 	sizeHints := make(SizeHintChan, 1)
 	go func(b *Block, sizeHints chan SizeHint) {
+		// for {
+		// 	var sh SizeHint
+		// 	select {
+		// 	case sh = <-sizeHints:
+		// 	case f.BlockSizeHints <- BlockSizeHint{
+		// 		SizeHint: sh,
+		// 		Block:    b,
+		// 	}:
+		// 	}
+		// }
 		for sh := range sizeHints {
 			f.BlockSizeHints <- BlockSizeHint{
 				SizeHint: sh,

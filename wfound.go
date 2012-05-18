@@ -48,6 +48,10 @@ func NewWindow(parent wde.Window, width, height int) (wf *WindowFoundation, err 
 	}
 	wf.Size = geom.Coord{float64(width), float64(height)}
 	wf.Initialize()
+
+	if ReportIDs {
+		Report(wf.ID, "window")
+	}
 	// Report(wf.ID, "is window")
 
 	go wf.handleWindowEvents()
@@ -175,11 +179,23 @@ func (wf *WindowFoundation) handleWindowEvents() {
 					Y: float64(e.Height),
 				},
 			})
+		}
+	}
+}
 
+func (wf *WindowFoundation) HandleEvents() {
+	for {
+		select {
+		case e := <-wf.UserEvents:
+			wf.HandleEvent(e)
+		case e := <-wf.BlockInvalidations:
+			wf.DoBlockInvalidation(e)
+		case e := <-wf.ResizeEvents:
+			wf.DoResizeEvent(e)
 			if wf.pane != nil {
+				// Report("window resized", wf.Size)
 				wf.PlaceBlock(wf.pane, geom.Rect{geom.Coord{}, wf.Size})
 			}
-
 			wf.Invalidate()
 		}
 	}

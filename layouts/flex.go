@@ -34,11 +34,23 @@ type elem struct {
 	sizes                      [3]float64
 }
 
+func (e *elem) fix() {
+	e.sizes[0] = e.minSize
+	e.sizes[1] = e.prefSize
+	e.sizes[2] = e.maxSize
+}
+
 type flex struct {
-	elemsets                    [][]*elem
+	elemsets                    []map[*elem]bool
 	minSize, prefSize, maxSize  float64
 	oldWidths, oldMins, oldMaxs []float64
 	oldLength                   float64
+}
+
+func (f *flex) has(e *elem) (ok bool) {
+	elems := f.elemsets[e.index]
+	ok = elems[e]
+	return
 }
 
 func (f *flex) add(e *elem) {
@@ -46,62 +58,30 @@ func (f *flex) add(e *elem) {
 	e.sizes[1] = e.prefSize
 	e.sizes[2] = e.maxSize
 	if e.index+e.extra >= len(f.elemsets) {
-		nelems := make([][]*elem, e.index+e.extra+1)
+		nelems := make([]map[*elem]bool, e.index+e.extra+1)
 		copy(nelems, f.elemsets)
 		f.elemsets = nelems
 	}
-	f.elemsets[e.index] = append(f.elemsets[e.index], e)
+	if f.elemsets[e.index] == nil {
+		f.elemsets[e.index] = map[*elem]bool{}
+	}
+	f.elemsets[e.index][e] = true
 	// f.oldWidths = nil
+}
+
+func (f *flex) rem(e *elem) {
+	elems := f.elemsets[e.index]
+	if elems[e] {
+		delete(elems, e)
+	}
 }
 
 func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 
-	r("checking length", length, f.oldLength)
+	// r("checking length", length, f.oldLength)
 	// first check if the last settings are still ok - better to not change if possible
-	if length == f.oldLength {
-		satisfied := true
 
-		if f.oldWidths != nil {
-		loop:
-			for _, elems := range f.elemsets {
-				for _, elem := range elems {
-					// r(elem.index, elem.extra)
-					if elem.index >= len(f.oldMins) {
-						satisfied = false
-						r("extra min")
-						break loop
-					}
-					// r("index ok", elem.index)
-					emin := f.oldMins[elem.index]
-					if elem.index+elem.extra >= len(f.oldMaxs) {
-						satisfied = false
-						r("extra max")
-						break loop
-					}
-					// r("index+extra ok", elem.index+elem.extra)
-					emax := f.oldMaxs[elem.index+elem.extra]
-					width := emax - emin
-					if width < elem.minSize || width > elem.maxSize {
-						satisfied = false
-						r("too small")
-						break loop
-					}
-				}
-			}
-
-			if satisfied {
-				//r("satisfied", f.oldWidths)
-				widths, mins, maxs = f.oldWidths, f.oldMins, f.oldMaxs
-				return
-			}
-		}
-	} else {
-		r("wrong length", length, f.oldLength)
-	}
-	f.oldLength = length
-	r("setting length", length, f.oldLength)
-
-	// uik.Report("constrain", length)
+	// r("constrain", length)
 	type item struct {
 		extra                      int
 		minSize, prefSize, maxSize float64
@@ -111,7 +91,7 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 	var total float64
 	widths = make([]float64, len(f.elemsets))
 	for index, elems := range f.elemsets {
-		for _, elem := range elems {
+		for elem := range elems {
 			// fmt.Println(elem)
 			curItems = append(curItems, item{
 				extra:    elem.extra,
@@ -140,12 +120,16 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 
 	diff := length - total
 
+	// if length == 796 {
+	// 	r(widths, diff)
+	// }
+
 	if diff > 0 {
 		avg := diff / float64(len(f.elemsets))
 		curItems = nil
 		for index, elems := range f.elemsets {
 			// fmt.Println(diff, "to give")
-			for _, elem := range elems {
+			for elem := range elems {
 				curItems = append(curItems, item{
 					extra:    elem.extra,
 					minSize:  elem.minSize,
@@ -162,6 +146,9 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 				}
 				nw = math.Min(nw, item.maxSize)
 			}
+			// if length == 796 {
+			// 	r("added", nw-widths[index])
+			// }
 			// fmt.Println("nw", nw)
 			diff -= nw - widths[index]
 			widths[index] = nw
@@ -184,7 +171,7 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 		curItems = nil
 		for index, elems := range f.elemsets {
 			// fmt.Println(diff, "to give")
-			for _, elem := range elems {
+			for elem := range elems {
 				curItems = append(curItems, item{
 					extra:    elem.extra,
 					minSize:  elem.minSize,
@@ -237,7 +224,6 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 }
 
 func (f *flex) makePref(which int) (size float64) {
-
 	type item struct {
 		extra int
 		size  float64
@@ -245,7 +231,7 @@ func (f *flex) makePref(which int) (size float64) {
 	var curItems []item
 
 	for _, elems := range f.elemsets {
-		for _, elem := range elems {
+		for elem := range elems {
 			curItems = append(curItems, item{elem.extra, elem.sizes[which]})
 		}
 
@@ -270,5 +256,8 @@ func (f *flex) makePrefs() (min, pref, max float64) {
 	min = f.makePref(0)
 	pref = f.makePref(1)
 	max = f.makePref(2)
+
+	// r("pref", min, pref, max)
+
 	return
 }
