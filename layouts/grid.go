@@ -250,48 +250,56 @@ func (g *Grid) regrid() {
 		gridSizeX, gridSizeY := gridBounds.Size()
 		if gridSizeX > csh.MaxSize.X {
 			diff := gridSizeX - csh.MaxSize.X
-			if bd.AnchorX&AnchorMin == 0 && bd.AnchorX&AnchorMax == 0 {
+			switch bd.AnchorX {
+			case 0:
 				gridBounds.Min.X += diff / 2
 				gridBounds.Max.X -= diff / 2
-			} else if bd.AnchorX&AnchorMin != 0 {
+			case AnchorMin:
 				gridBounds.Max.X -= diff
-			} else if bd.AnchorX&AnchorMax != 0 {
+			case AnchorMax:
 				gridBounds.Min.X += diff
+			case AnchorMin | AnchorMax:
 			}
 		}
 		if gridSizeY > csh.MaxSize.Y {
 			diff := gridSizeY - csh.MaxSize.Y
-			if bd.AnchorY&AnchorMin == 0 && bd.AnchorY&AnchorMax == 0 {
+			switch bd.AnchorY {
+			case 0:
 				gridBounds.Min.Y += diff / 2
 				gridBounds.Max.Y -= diff / 2
-			} else if bd.AnchorY&AnchorMin != 0 {
+			case AnchorMin:
 				gridBounds.Max.Y -= diff
-			} else if bd.AnchorY&AnchorMax != 0 {
+			case AnchorMax:
 				gridBounds.Min.Y += diff
+			case AnchorMin | AnchorMax:
 			}
 		}
 
 		gridSizeX, gridSizeY = gridBounds.Size()
 		if gridSizeX > csh.PreferredSize.X {
 			diff := gridSizeX - csh.PreferredSize.X
-			if bd.AnchorX&AnchorMin == 0 && bd.AnchorX&AnchorMax == 0 {
+			switch bd.AnchorX {
+			case 0:
 				gridBounds.Min.X += diff / 2
 				gridBounds.Max.X -= diff / 2
-			} else if bd.AnchorX&AnchorMin != 0 {
+			case AnchorMin:
 				gridBounds.Max.X -= diff
-			} else if bd.AnchorX&AnchorMax != 0 {
+			case AnchorMax:
 				gridBounds.Min.X += diff
+			case AnchorMin | AnchorMax:
 			}
 		}
 		if gridSizeY > csh.PreferredSize.Y {
 			diff := gridSizeY - csh.PreferredSize.Y
-			if bd.AnchorY&AnchorMin == 0 && bd.AnchorY&AnchorMax == 0 {
+			switch bd.AnchorY {
+			case 0:
 				gridBounds.Min.Y += diff / 2
 				gridBounds.Max.Y -= diff / 2
-			} else if bd.AnchorY&AnchorMin != 0 {
+			case AnchorMin:
 				gridBounds.Max.Y -= diff
-			} else if bd.AnchorY&AnchorMax != 0 {
+			case AnchorMax:
 				gridBounds.Min.Y += diff
+			case AnchorMin | AnchorMax:
 			}
 		}
 

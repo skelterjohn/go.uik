@@ -98,12 +98,16 @@ func uiktest() {
 	g.Add(layouts.BlockData{
 		Block: &widgets.NewButton("Spanner").Block,
 		GridX: 0, GridY: 2,
-		ExtraX: 1,
+		ExtraX:  1,
+		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
+		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
 	})
 	g.Add(layouts.BlockData{
 		Block: &widgets.NewButton("Offset Spanner").Block,
 		GridX: 1, GridY: 3,
-		ExtraX: 1,
+		ExtraX:  1,
+		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
+		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
 	})
 
 	if true {
