@@ -80,7 +80,7 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 	// r("checking length", length, f.oldLength)
 	// first check if the last settings are still ok - better to not change if possible
 
-	if false && length == f.length {
+	if length == f.length {
 		var satisfied = true
 	loop:
 		for _, elems := range f.elemsets {
@@ -102,7 +102,7 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 				}
 			}
 		}
-		if false && satisfied {
+		if satisfied {
 
 			widths = f.widths
 			mins = f.mins
