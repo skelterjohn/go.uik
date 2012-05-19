@@ -32,13 +32,13 @@ func uiktest() {
 	// Create a button with the given size and label
 	b := widgets.NewButton("Hi")
 	// Here we get the button's label's data
-	ld := <-b.Label.GetConfig
+	ld := b.Label.GetConfig()
 	// we modify the copy for a special message to display
 	ld.Text = "clicked!"
 
-	l := widgets.NewLabel(geom.Coord{100, 50}, widgets.LabelData{"text", 14, color.Black})
+	l := widgets.NewLabel(geom.Coord{100, 50}, widgets.LabelConfig{"text", 14, color.Black})
 	b2 := widgets.NewButton("there")
-	ld2 := <-b2.Label.GetConfig
+	ld2 := b2.Label.GetConfig()
 	ld2.Text = "BAM"
 
 	// the widget.Buttton has a special channels that sends out wde.Buttons
@@ -48,8 +48,8 @@ func uiktest() {
 	b.AddClicker <- clicker
 	go func() {
 		for _ = range clicker {
-			b.Label.SetConfig <- ld
-			l.SetConfig <- widgets.LabelData{"ohnoes", 20, color.Black}
+			b.Label.SetConfig(ld)
+			l.SetConfig(widgets.LabelConfig{"ohnoes", 20, color.Black})
 		}
 	}()
 
@@ -57,9 +57,9 @@ func uiktest() {
 	b2.AddClicker <- clicker2
 	go func() {
 		for _ = range clicker2 {
-			b.Label.SetConfig <- ld2
-			b2.Label.SetConfig <- ld
-			l.SetConfig <- widgets.LabelData{"oops", 14, color.Black}
+			b.Label.SetConfig(ld2)
+			b2.Label.SetConfig(ld)
+			l.SetConfig(widgets.LabelConfig{"oops", 14, color.Black})
 		}
 	}()
 
@@ -69,42 +69,42 @@ func uiktest() {
 
 	g := layouts.NewGrid(layouts.GridConfig{})
 
-	l0_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelData{"0, 0", 12, color.Black})
-	l0_1 := widgets.NewLabel(geom.Coord{}, widgets.LabelData{"0, 1", 12, color.Black})
-	l1_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelData{"1, 0", 12, color.Black})
-	l1_1 := widgets.NewLabel(geom.Coord{}, widgets.LabelData{"1, 1", 12, color.Black})
+	l0_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"0, 0", 12, color.Black})
+	l0_1 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"0, 1", 12, color.Black})
+	l1_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"1, 0", 12, color.Black})
+	l1_1 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"1, 1", 12, color.Black})
 
-	g.Add <- layouts.BlockData{
+	g.Add(layouts.BlockData{
 		Block: &l0_0.Block,
 		GridX: 0, GridY: 0,
-	}
-	g.Add <- layouts.BlockData{
+	})
+	g.Add(layouts.BlockData{
 		Block: &l0_1.Block,
 		GridX: 0, GridY: 1,
-	}
-	g.Add <- layouts.BlockData{
+	})
+	g.Add(layouts.BlockData{
 		Block: &l1_0.Block,
 		GridX: 1, GridY: 0,
 		MinSize: geom.Coord{60, 60},
 		AnchorX: layouts.AnchorMax,
 		AnchorY: layouts.AnchorMax,
-	}
-	g.Add <- layouts.BlockData{
+	})
+	g.Add(layouts.BlockData{
 		Block: &l1_1.Block,
 		GridX: 1, GridY: 1,
 		AnchorX: layouts.AnchorMin,
 		AnchorY: layouts.AnchorMin,
-	}
-	g.Add <- layouts.BlockData{
+	})
+	g.Add(layouts.BlockData{
 		Block: &widgets.NewButton("Spanner").Block,
 		GridX: 0, GridY: 2,
 		ExtraX: 1,
-	}
-	g.Add <- layouts.BlockData{
+	})
+	g.Add(layouts.BlockData{
 		Block: &widgets.NewButton("Offset Spanner").Block,
 		GridX: 1, GridY: 3,
 		ExtraX: 1,
-	}
+	})
 
 	if true {
 		imgReader := bytes.NewReader(gordon_gif())
@@ -113,11 +113,11 @@ func uiktest() {
 			im := widgets.NewImage(widgets.ImageConfig{
 				Image: gordonImage,
 			})
-			g.Add <- layouts.BlockData{
+			g.Add(layouts.BlockData{
 				Block: &im.Block,
 				GridX: 0, GridY: 4,
 				ExtraX: 2,
-			}
+			})
 		} else {
 			fmt.Println(gerr)
 		}
@@ -127,14 +127,14 @@ func uiktest() {
 	b.AddClicker <- clicker3
 	go func() {
 		for _ = range clicker3 {
-			l0_0.SetConfig <- widgets.LabelData{"Pow", 12, color.Black}
+			l0_0.SetConfig(widgets.LabelConfig{"Pow", 12, color.Black})
 		}
 	}()
 	clicker4 := make(widgets.Clicker)
 	b2.AddClicker <- clicker4
 	go func() {
 		for _ = range clicker4 {
-			l0_0.SetConfig <- widgets.LabelData{"gotcha", 12, color.Black}
+			l0_0.SetConfig(widgets.LabelConfig{"gotcha", 12, color.Black})
 		}
 	}()
 
@@ -156,7 +156,7 @@ func uiktest() {
 	)
 
 	// set this HBox to be the window pane
-	w.Pane <- &hb.Block
+	w.SetPane(&hb.Block)
 
 	w.Show()
 

@@ -176,6 +176,7 @@ func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 	gc := draw2d.NewGraphicContext(buffer)
 	f.DoPaint(gc)
+	// TODO: ranging on f.ChildrenBounds is not threadsafe
 	for child, bounds := range f.ChildrenBounds {
 		r := RectangleForRect(bounds)
 

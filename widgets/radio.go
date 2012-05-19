@@ -169,10 +169,10 @@ func (r *Radio) makeButtons(options []string) {
 			MaxX: 2, MaxY: 2,
 		}, &ob.Block)
 
-		r.radioGrid.Add <- layouts.BlockData{
+		r.radioGrid.Add(layouts.BlockData{
 			Block: &pb.Block,
 			GridX: 0, GridY: i,
-		}
+		})
 
 		clicker := make(chan wde.Button, 1)
 		go func(clicker chan wde.Button, index int, done chan bool) {
@@ -193,12 +193,11 @@ func (r *Radio) makeButtons(options []string) {
 func (r *Radio) updateButtons() {
 	for i, b := range r.buttons {
 		if i == r.selection {
-			b.SetConfig <- ButtonConfig{
+			b.SetConfig(ButtonConfig{
 				Color: color.RGBA{110, 110, 110, 255},
-			}
+			})
 		} else {
-			b.SetConfig <- ButtonConfig{}
+			b.SetConfig(ButtonConfig{})
 		}
 	}
-	r.Invalidate()
 }

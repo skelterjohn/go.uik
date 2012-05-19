@@ -28,11 +28,11 @@ import (
 func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
-		g.Add <- BlockData{
+		g.Add(BlockData{
 			Block: b,
 			GridX: 0, GridY: i,
 			AnchorX: AnchorMin,
-		}
+		})
 	}
 	return
 }
@@ -40,11 +40,11 @@ func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 func HBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
-		g.Add <- BlockData{
+		g.Add(BlockData{
 			Block: b,
 			GridX: i, GridY: 0,
 			AnchorY: AnchorMin,
-		}
+		})
 	}
 	return
 }
@@ -82,13 +82,9 @@ type Grid struct {
 	vflex, hflex   *flex
 	velems, helems map[*uik.Block]*elem
 
-	Add       chan<- BlockData
 	add       chan BlockData
-	Remove    chan<- *uik.Block
 	remove    chan *uik.Block
-	SetConfig chan<- GridConfig
 	setConfig chan GridConfig
-	GetConfig <-chan GridConfig
 	getConfig chan GridConfig
 }
 
@@ -115,13 +111,9 @@ func (g *Grid) Initialize() {
 	g.childrenBlockData = map[*uik.Block]BlockData{}
 
 	g.add = make(chan BlockData, 1)
-	g.Add = g.add
 	g.remove = make(chan *uik.Block, 1)
-	g.Remove = g.remove
 	g.setConfig = make(chan GridConfig, 1)
-	g.SetConfig = g.setConfig
 	g.getConfig = make(chan GridConfig, 1)
-	g.GetConfig = g.getConfig
 
 	g.hflex = &flex{}
 	g.vflex = &flex{}
@@ -132,6 +124,23 @@ func (g *Grid) Initialize() {
 	// g.Paint = func(gc draw2d.GraphicContext) {
 	// 	g.draw(gc)
 	// }
+}
+
+func (g *Grid) Add(bd BlockData) {
+	g.add <- bd
+}
+
+func (g *Grid) Remove(b *uik.Block) {
+	g.remove <- b
+}
+
+func (g *Grid) SetConfig(cfg GridConfig) {
+	g.setConfig <- cfg
+}
+
+func (g *Grid) GetConfig() (cfg GridConfig) {
+	cfg = <-g.getConfig
+	return
 }
 
 func (g *Grid) addBlock(bd BlockData) {
@@ -241,7 +250,7 @@ func (g *Grid) regrid() {
 		gridSizeX, gridSizeY := gridBounds.Size()
 		if gridSizeX > csh.MaxSize.X {
 			diff := gridSizeX - csh.MaxSize.X
-			if bd.AnchorX&AnchorMin != 0 && bd.AnchorX&AnchorMax != 0 {
+			if bd.AnchorX&AnchorMin == 0 && bd.AnchorX&AnchorMax == 0 {
 				gridBounds.Min.X += diff / 2
 				gridBounds.Max.X -= diff / 2
 			} else if bd.AnchorX&AnchorMin != 0 {
@@ -265,7 +274,7 @@ func (g *Grid) regrid() {
 		gridSizeX, gridSizeY = gridBounds.Size()
 		if gridSizeX > csh.PreferredSize.X {
 			diff := gridSizeX - csh.PreferredSize.X
-			if bd.AnchorX&AnchorMin != 0 && bd.AnchorX&AnchorMax != 0 {
+			if bd.AnchorX&AnchorMin == 0 && bd.AnchorX&AnchorMax == 0 {
 				gridBounds.Min.X += diff / 2
 				gridBounds.Max.X -= diff / 2
 			} else if bd.AnchorX&AnchorMin != 0 {

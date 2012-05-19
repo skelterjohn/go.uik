@@ -40,9 +40,7 @@ type Image struct {
 	uik.Block
 
 	config    ImageConfig
-	SetConfig chan<- ImageConfig
 	setConfig chan ImageConfig
-	GetConfig <-chan ImageConfig
 	getConfig chan ImageConfig
 }
 
@@ -61,13 +59,20 @@ func (i *Image) Initialize() {
 	i.Block.Initialize()
 
 	i.setConfig = make(chan ImageConfig, 1)
-	i.SetConfig = i.setConfig
 	i.getConfig = make(chan ImageConfig, 1)
-	i.GetConfig = i.getConfig
 
 	i.Paint = func(gc draw2d.GraphicContext) {
 		i.draw(gc)
 	}
+}
+
+func (i *Image) SetConfig(cfg ImageConfig) {
+	i.setConfig <- cfg
+}
+
+func (i *Image) GetConfig() (cfg ImageConfig) {
+	cfg = <-i.getConfig
+	return
 }
 
 func (i *Image) draw(gc draw2d.GraphicContext) {
@@ -102,20 +107,13 @@ func (i *Image) handleEvents() {
 				i.HandleEvent(e)
 			}
 		case e := <-i.ResizeEvents:
-			if i.Size == e.Size {
-				break
-			}
-			i.Block.DoResizeEvent(e)
-			i.Invalidate()
-			// go uik.ShowBuffer("label buffer", l.Buffer)
+			i.DoResizeEvent(e)
 		case config := <-i.setConfig:
 			if i.config == config {
 				break
 			}
 			i.updateConfig(config)
-			// go uik.ShowBuffer("label buffer", l.Buffer)
 		case i.getConfig <- i.config:
-			// go uik.ShowBuffer("label buffer", l.Buffer)
 		}
 	}
 }

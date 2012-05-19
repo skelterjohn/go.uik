@@ -1,7 +1,6 @@
 package layouts
 
 import (
-	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
 )
 
@@ -14,6 +13,8 @@ type PadBox struct {
 
 	block  *uik.Block
 	config PadConfig
+
+	setConfig, getConfig chan PadConfig
 }
 
 func NewPadBox(config PadConfig, block *uik.Block) (p *PadBox) {
@@ -37,7 +38,28 @@ func NewPadBox(config PadConfig, block *uik.Block) (p *PadBox) {
 func (p *PadBox) Initialize() {
 	p.Foundation.Initialize()
 
+	p.setConfig = make(chan PadConfig, 1)
+	p.getConfig = make(chan PadConfig, 1)
+
 	p.Paint = nil
+}
+
+func (p *PadBox) SetConfig(cfg PadConfig) {
+	p.setConfig <- cfg
+}
+
+func (p *PadBox) GetConfig() (cfg PadConfig) {
+	cfg = <-p.getConfig
+	return
+}
+
+func (p *PadBox) repad() {
+	cbounds := p.Bounds()
+	cbounds.Min.X += p.config.MinX
+	cbounds.Min.Y += p.config.MinY
+	cbounds.Max.X -= p.config.MaxX
+	cbounds.Max.Y -= p.config.MaxY
+	p.PlaceBlock(p.block, cbounds)
 }
 
 func (p *PadBox) HandleEvents() {
@@ -65,16 +87,13 @@ func (p *PadBox) HandleEvents() {
 			p.SetSizeHint(sh)
 
 		case e := <-p.ResizeEvents:
-
 			p.DoResizeEvent(e)
+			p.repad()
 
-			cbounds := geom.Rect{Max: p.Size}
-			cbounds.Min.X += p.config.MinX
-			cbounds.Min.Y += p.config.MinY
-			cbounds.Max.X -= p.config.MaxX
-			cbounds.Max.Y -= p.config.MaxY
+		case p.getConfig <- p.config:
 
-			p.PlaceBlock(p.block, cbounds)
+		case p.config = <-p.setConfig:
+			p.repad()
 		}
 	}
 }

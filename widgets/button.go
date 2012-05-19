@@ -40,9 +40,7 @@ type Button struct {
 	config ButtonConfig
 
 	setConfig chan ButtonConfig
-	SetConfig chan<- ButtonConfig
 	getConfig chan ButtonConfig
-	GetConfig <-chan ButtonConfig
 
 	Clickers      map[Clicker]bool
 	AddClicker    chan Clicker
@@ -51,20 +49,18 @@ type Button struct {
 
 func NewButton(label string) (b *Button) {
 	b = new(Button)
+
 	b.Initialize()
+
 	if uik.ReportIDs {
 		uik.Report(b.ID, "button")
 	}
 
-	// b.Size = geom.Coord{70, 30}
-
-	// uik.Report(b.ID, "is button")
-
-	b.Label.SetConfig <- LabelData{
+	b.Label.SetConfig(LabelConfig{
 		Text:     label,
 		FontSize: 12,
 		Color:    color.Black,
-	}
+	})
 
 	go b.handleEvents()
 
@@ -76,19 +72,12 @@ func (b *Button) Initialize() {
 
 	b.DrawOp = draw.Over
 
-	b.Label = NewLabel(b.Size, LabelData{
+	b.Label = NewLabel(b.Size, LabelConfig{
 		Text:     "",
 		FontSize: 12,
 		Color:    color.Black,
 	})
-	// uik.Report(b.ID, "has label", b.Label.ID)
 	b.AddBlock(&b.Label.Block)
-	// lbounds := b.Bounds()
-	// lbounds.Min.X += 1
-	// lbounds.Min.Y += 1
-	// lbounds.Max.X -= 1
-	// lbounds.Max.Y -= 1
-	b.PlaceBlock(&b.Label.Block, b.Bounds())
 
 	b.Clickers = map[Clicker]bool{}
 	b.AddClicker = make(chan Clicker, 1)
@@ -108,9 +97,16 @@ func (b *Button) Initialize() {
 	b.SetSizeHint(sh)
 
 	b.setConfig = make(chan ButtonConfig, 1)
-	b.SetConfig = b.setConfig
 	b.getConfig = make(chan ButtonConfig, 1)
-	b.GetConfig = b.getConfig
+}
+
+func (b *Button) SetConfig(cfg ButtonConfig) {
+	b.setConfig <- cfg
+}
+
+func (b *Button) GetConfig() (cfg ButtonConfig) {
+	cfg = <-b.getConfig
+	return
 }
 
 func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {

@@ -34,7 +34,7 @@ type WindowFoundation struct {
 	Foundation
 	W               wde.Window
 	pane            *Block
-	Pane            chan *Block
+	paneCh          chan *Block
 	waitForRepaint  chan bool
 	doRepaintWindow chan bool
 }
@@ -69,13 +69,17 @@ func (wf *WindowFoundation) Initialize() {
 	wf.waitForRepaint = make(chan bool)
 	wf.doRepaintWindow = make(chan bool)
 	wf.Invalidations = make(chan Invalidation, 1)
-	wf.Pane = make(chan *Block, 1)
+	wf.paneCh = make(chan *Block, 1)
 
 	wf.Paint = ClearPaint
 
 	// Report("wfound is", wf.ID)
 
 	wf.HasKeyFocus = true
+}
+
+func (wf *WindowFoundation) SetPane(b *Block) {
+	wf.paneCh <- b
 }
 
 func (wf *WindowFoundation) setPane(b *Block) {
@@ -212,7 +216,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 
 	for {
 		select {
-		case pane := <-wf.Pane:
+		case pane := <-wf.paneCh:
 			wf.setPane(pane)
 		case inv := <-wf.Invalidations:
 			invalidRects = append(invalidRects, inv.Bounds...)

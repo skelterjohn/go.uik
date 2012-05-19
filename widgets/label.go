@@ -24,7 +24,7 @@ import (
 	"image/color"
 )
 
-type LabelData struct {
+type LabelConfig struct {
 	Text     string
 	FontSize float64
 	Color    color.Color
@@ -33,16 +33,14 @@ type LabelData struct {
 type Label struct {
 	uik.Block
 
-	data      LabelData
-	SetConfig chan<- LabelData
-	setConfig chan LabelData
-	GetConfig <-chan LabelData
-	getConfig chan LabelData
+	data      LabelConfig
+	setConfig chan LabelConfig
+	getConfig chan LabelConfig
 
 	tbuf image.Image
 }
 
-func NewLabel(size geom.Coord, data LabelData) (l *Label) {
+func NewLabel(size geom.Coord, data LabelConfig) (l *Label) {
 	l = new(Label)
 	l.Initialize()
 	if uik.ReportIDs {
@@ -64,14 +62,22 @@ func NewLabel(size geom.Coord, data LabelData) (l *Label) {
 func (l *Label) Initialize() {
 	l.Block.Initialize()
 
-	l.setConfig = make(chan LabelData, 1)
-	l.SetConfig = l.setConfig
-	l.getConfig = make(chan LabelData, 1)
-	l.GetConfig = l.getConfig
+	l.setConfig = make(chan LabelConfig, 1)
+	l.getConfig = make(chan LabelConfig, 1)
 
 	l.Paint = func(gc draw2d.GraphicContext) {
 		l.draw(gc)
 	}
+}
+
+func (l *Label) SetConfig(cfg LabelConfig) {
+	l.setConfig <- cfg
+	return
+}
+
+func (l *Label) GetConfig() (cfg LabelConfig) {
+	cfg = <-l.getConfig
+	return
 }
 
 func (l *Label) render() {
