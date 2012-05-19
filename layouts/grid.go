@@ -129,6 +129,9 @@ func (g *Grid) Initialize() {
 	g.helems = map[*uik.Block]*elem{}
 	g.velems = map[*uik.Block]*elem{}
 
+	// g.Paint = func(gc draw2d.GraphicContext) {
+	// 	g.draw(gc)
+	// }
 }
 
 func (g *Grid) addBlock(bd BlockData) {
@@ -215,8 +218,10 @@ func (g *Grid) makePreferences() {
 }
 
 func (g *Grid) regrid() {
+
 	_, minXs, maxXs := g.hflex.constrain(g.Size.X)
 	_, minYs, maxYs := g.vflex.constrain(g.Size.Y)
+
 	// if g.Block.ID == 2 {
 	// 	uik.Report("regrid", g.Block.ID, g.Size, whs, wvs)
 	// }

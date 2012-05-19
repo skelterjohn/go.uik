@@ -22,6 +22,7 @@ import (
 	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
+	"os"
 )
 
 type BlockSizeHint struct {
@@ -190,6 +191,10 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 				// srgba.Rect.Max.Y -= srgba.Rect.Min.Y
 				// srgba.Rect.Min = image.Point{}
 				// child.buffer = srgba
+				bs := or.Size()
+				if bs.X < 0 || bs.Y < 0 {
+					os.Exit(0)
+				}
 				child.buffer = image.NewRGBA(or)
 			} else {
 				ZeroRGBA(child.buffer.(*image.RGBA))

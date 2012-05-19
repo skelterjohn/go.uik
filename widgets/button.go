@@ -56,7 +56,7 @@ func NewButton(label string) (b *Button) {
 		uik.Report(b.ID, "button")
 	}
 
-	b.Size = geom.Coord{70, 30}
+	// b.Size = geom.Coord{70, 30}
 
 	// uik.Report(b.ID, "is button")
 
@@ -82,12 +82,13 @@ func (b *Button) Initialize() {
 		Color:    color.Black,
 	})
 	// uik.Report(b.ID, "has label", b.Label.ID)
-	lbounds := b.Bounds()
-	lbounds.Min.X += 1
-	lbounds.Min.Y += 1
-	lbounds.Max.X -= 1
-	lbounds.Max.Y -= 1
-	b.PlaceBlock(&b.Label.Block, lbounds)
+	b.AddBlock(&b.Label.Block)
+	// lbounds := b.Bounds()
+	// lbounds.Min.X += 1
+	// lbounds.Min.Y += 1
+	// lbounds.Max.X -= 1
+	// lbounds.Max.Y -= 1
+	b.PlaceBlock(&b.Label.Block, b.Bounds())
 
 	b.Clickers = map[Clicker]bool{}
 	b.AddClicker = make(chan Clicker, 1)
@@ -181,10 +182,6 @@ func (b *Button) handleEvents() {
 				b.Foundation.DoResizeEvent(e)
 			}
 			lbounds := b.Bounds()
-			lbounds.Min.X += 1
-			lbounds.Min.Y += 1
-			lbounds.Max.X -= 1
-			lbounds.Max.Y -= 1
 			b.PlaceBlock(&b.Label.Block, lbounds)
 		case c := <-b.AddClicker:
 			b.Clickers[c] = true

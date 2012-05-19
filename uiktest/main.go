@@ -27,7 +27,7 @@ func uiktest() {
 		fmt.Println(err)
 		return
 	}
-	w.W.SetTitle("go.uik")
+	w.W.SetTitle("uiktest")
 
 	// Create a button with the given size and label
 	b := widgets.NewButton("Hi")
@@ -87,12 +87,13 @@ func uiktest() {
 		GridX: 1, GridY: 0,
 		MinSize: geom.Coord{60, 60},
 		AnchorX: layouts.AnchorMax,
+		AnchorY: layouts.AnchorMax,
 	}
 	g.Add <- layouts.BlockData{
 		Block: &l1_1.Block,
 		GridX: 1, GridY: 1,
-		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
-		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
+		AnchorX: layouts.AnchorMin,
+		AnchorY: layouts.AnchorMin,
 	}
 	g.Add <- layouts.BlockData{
 		Block: &widgets.NewButton("Spanner").Block,
@@ -105,19 +106,21 @@ func uiktest() {
 		ExtraX: 1,
 	}
 
-	imgReader := bytes.NewReader(gordon_gif())
-	gordonImage, gerr := gif.Decode(imgReader)
-	if gerr == nil {
-		im := widgets.NewImage(widgets.ImageConfig{
-			Image: gordonImage,
-		})
-		g.Add <- layouts.BlockData{
-			Block: &im.Block,
-			GridX: 0, GridY: 4,
-			ExtraX: 2,
+	if true {
+		imgReader := bytes.NewReader(gordon_gif())
+		gordonImage, gerr := gif.Decode(imgReader)
+		if gerr == nil {
+			im := widgets.NewImage(widgets.ImageConfig{
+				Image: gordonImage,
+			})
+			g.Add <- layouts.BlockData{
+				Block: &im.Block,
+				GridX: 0, GridY: 4,
+				ExtraX: 2,
+			}
+		} else {
+			fmt.Println(gerr)
 		}
-	} else {
-		fmt.Println(gerr)
 	}
 
 	clicker3 := make(widgets.Clicker)
@@ -137,9 +140,20 @@ func uiktest() {
 
 	e := widgets.NewEntry(geom.Coord{100, 30})
 
+	_ = kg
+	_ = cb
+	_ = e
+
 	// the HBox is a special type of grid that lines things up horizontally
 	hb := layouts.HBox(layouts.GridConfig{},
-		&b.Block, &l.Block, &kg.Block, &b2.Block, &cb.Block, &g.Block, &e.Block)
+		&b.Block,
+		&l.Block,
+		// &kg.Block,
+		&b2.Block,
+		&cb.Block,
+		// &e.Block,
+		&g.Block,
+	)
 
 	// set this HBox to be the window pane
 	w.Pane <- &hb.Block

@@ -17,14 +17,14 @@
 package layouts
 
 import (
-	"fmt"
+	"github.com/skelterjohn/go.uik"
 	"math"
 )
 
 func r(x ...interface{}) {
 	if true {
 		// fmt.Print("flex ")
-		fmt.Println(x...)
+		uik.Report(x...)
 	}
 }
 
@@ -41,10 +41,10 @@ func (e *elem) fix() {
 }
 
 type flex struct {
-	elemsets                    []map[*elem]bool
-	minSize, prefSize, maxSize  float64
-	oldWidths, oldMins, oldMaxs []float64
-	oldLength                   float64
+	elemsets                   []map[*elem]bool
+	minSize, prefSize, maxSize float64
+	widths, mins, maxs         []float64
+	length                     float64
 }
 
 func (f *flex) has(e *elem) (ok bool) {
@@ -66,7 +66,6 @@ func (f *flex) add(e *elem) {
 		f.elemsets[e.index] = map[*elem]bool{}
 	}
 	f.elemsets[e.index][e] = true
-	// f.oldWidths = nil
 }
 
 func (f *flex) rem(e *elem) {
@@ -80,6 +79,37 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 
 	// r("checking length", length, f.oldLength)
 	// first check if the last settings are still ok - better to not change if possible
+
+	if false && length == f.length {
+		var satisfied = true
+	loop:
+		for _, elems := range f.elemsets {
+			for elem := range elems {
+				if elem.index >= len(f.mins) {
+					satisfied = false
+					break loop
+				}
+				min := f.mins[elem.index]
+				if elem.index+elem.extra >= len(f.maxs) {
+					satisfied = false
+					break loop
+				}
+				max := f.maxs[elem.index+elem.extra]
+				w := max - min
+				if w < elem.minSize || w > elem.maxSize {
+					satisfied = false
+					break loop
+				}
+			}
+		}
+		if false && satisfied {
+
+			widths = f.widths
+			mins = f.mins
+			maxs = f.maxs
+			return
+		}
+	}
 
 	// r("constrain", length)
 	type item struct {
@@ -120,88 +150,43 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 
 	diff := length - total
 
-	// if length == 796 {
-	// 	r(widths, diff)
-	// }
+	avg := diff / float64(len(f.elemsets))
+	curItems = nil
 
-	if diff > 0 {
-		avg := diff / float64(len(f.elemsets))
-		curItems = nil
-		for index, elems := range f.elemsets {
-			// fmt.Println(diff, "to give")
-			for elem := range elems {
-				curItems = append(curItems, item{
-					extra:    elem.extra,
-					minSize:  elem.minSize,
-					prefSize: elem.prefSize,
-					maxSize:  elem.maxSize,
-				})
+	for index, elems := range f.elemsets {
+		for elem := range elems {
+			curItems = append(curItems, item{
+				extra:    elem.extra,
+				minSize:  elem.minSize,
+				prefSize: elem.prefSize,
+				maxSize:  elem.maxSize,
+			})
+		}
+
+		nw := widths[index] + avg
+		for _, item := range curItems {
+			if item.extra < 0 {
+				continue
 			}
-
-			nw := widths[index] + avg
-			for _, item := range curItems {
-				// fmt.Println(item)
-				if item.extra < 0 {
-					continue
-				}
+			if diff > 0 {
 				nw = math.Min(nw, item.maxSize)
 			}
-			// if length == 796 {
-			// 	r("added", nw-widths[index])
-			// }
-			// fmt.Println("nw", nw)
-			diff -= nw - widths[index]
-			widths[index] = nw
-
-			if diff == 0 {
-				break
-			}
-
-			for i := range curItems {
-				curItems[i].extra--
-				curItems[i].minSize -= widths[index]
-				curItems[i].prefSize -= widths[index]
-				curItems[i].maxSize -= widths[index]
-			}
-		}
-	}
-
-	if diff < 0 {
-		avg := diff / float64(len(f.elemsets))
-		curItems = nil
-		for index, elems := range f.elemsets {
-			// fmt.Println(diff, "to give")
-			for elem := range elems {
-				curItems = append(curItems, item{
-					extra:    elem.extra,
-					minSize:  elem.minSize,
-					prefSize: elem.prefSize,
-					maxSize:  elem.maxSize,
-				})
-			}
-
-			nw := widths[index] + avg
-			for _, item := range curItems {
-				// fmt.Println(item)
-				if item.extra < 0 {
-					continue
-				}
+			if diff < 0 {
 				nw = math.Max(nw, item.minSize)
 			}
-			// fmt.Println("nw", nw)
-			diff -= nw - widths[index]
-			widths[index] = nw
+		}
+		diff -= nw - widths[index]
+		widths[index] = nw
 
-			if diff == 0 {
-				break
-			}
+		if diff == 0 {
+			break
+		}
 
-			for i := range curItems {
-				curItems[i].extra--
-				curItems[i].minSize -= widths[index]
-				curItems[i].prefSize -= widths[index]
-				curItems[i].maxSize -= widths[index]
-			}
+		for i := range curItems {
+			curItems[i].extra--
+			curItems[i].minSize -= widths[index]
+			curItems[i].prefSize -= widths[index]
+			curItems[i].maxSize -= widths[index]
 		}
 	}
 
@@ -214,9 +199,10 @@ func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
 		maxs[i] = left
 	}
 
-	f.oldWidths = append([]float64{}, widths...)
-	f.oldMins = append([]float64{}, mins...)
-	f.oldMaxs = append([]float64{}, maxs...)
+	f.length = length
+	f.widths = append([]float64{}, widths...)
+	f.mins = append([]float64{}, mins...)
+	f.maxs = append([]float64{}, maxs...)
 
 	// r("giving", widths)
 
