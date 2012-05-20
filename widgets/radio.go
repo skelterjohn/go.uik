@@ -172,6 +172,8 @@ func (r *Radio) makeButtons(options []string) {
 		r.radioGrid.Add(layouts.BlockData{
 			Block: &pb.Block,
 			GridX: 0, GridY: i,
+			AnchorX: layouts.AnchorMin | layouts.AnchorMax,
+			AnchorY: layouts.AnchorMin | layouts.AnchorMax,
 		})
 
 		clicker := make(chan wde.Button, 1)

@@ -40,3 +40,21 @@ func ZeroRGBA(rgba *image.RGBA) {
 		}
 	}
 }
+
+type PaintFunc func(draw2d.GraphicContext)
+type PaintGen func(interface{}) PaintFunc
+
+var paintGens = map[string]PaintGen{}
+
+func RegisterPaint(path string, dg PaintGen) {
+	paintGens[path] = dg
+}
+
+func LookupPaint(path string, x interface{}) (pf PaintFunc) {
+	pg, ok := paintGens[path]
+	if !ok {
+		return
+	}
+	pf = pg(x)
+	return
+}

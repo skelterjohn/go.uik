@@ -52,6 +52,8 @@ func NewButton(label string) (b *Button) {
 
 	b.Initialize()
 
+	b.Paint = uik.LookupPaint("widgets.Button", b)
+
 	if uik.ReportIDs {
 		uik.Report(b.ID, "button")
 	}
@@ -82,10 +84,6 @@ func (b *Button) Initialize() {
 	b.Clickers = map[Clicker]bool{}
 	b.AddClicker = make(chan Clicker, 1)
 	b.RemoveClicker = make(chan Clicker, 1)
-
-	b.Paint = func(gc draw2d.GraphicContext) {
-		b.draw(gc)
-	}
 
 	var cs geom.Coord
 	cs.X, cs.Y = b.Bounds().Size()
@@ -119,30 +117,6 @@ func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
 	path.LineTo(x1, y2)
 	path.Close()
 	path.MoveTo(x, y)
-}
-
-func (b *Button) draw(gc draw2d.GraphicContext) {
-	gc.Clear()
-
-	bbounds := geom.Rect{
-		Min: geom.Coord{0, 0},
-		Max: geom.Coord{b.Size.X, b.Size.Y},
-	}
-
-	// gc.SetStrokeColor(color.Black)
-	if b.pressed {
-		gc.SetFillColor(color.RGBA{150, 150, 150, 255})
-		safeRect(gc, bbounds.Min, bbounds.Max)
-		gc.Fill()
-	} else {
-		if b.config.Color != nil {
-			gc.SetFillColor(b.config.Color)
-		} else {
-			gc.SetFillColor(color.RGBA{200, 200, 200, 255})
-		}
-		safeRect(gc, bbounds.Min, bbounds.Max)
-		gc.Fill()
-	}
 }
 
 func (b *Button) handleEvents() {
