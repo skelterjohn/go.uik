@@ -11,6 +11,7 @@ type LayoutEngine interface {
 	SetHint(block *uik.Block, hint uik.SizeHint)
 	GetHint() uik.SizeHint
 	GetLayout(size geom.Coord) Layout
+	SetAdd(func(*uik.Block))
 }
 
 type Layouter struct {
@@ -25,10 +26,18 @@ func NewLayouter(engine LayoutEngine) (l *Layouter) {
 	l.Initialize()
 
 	l.engine = engine
+	l.engine.SetAdd(func(block *uik.Block) {
+		l.AddBlock(block)
+	})
 
 	go l.HandleEvents()
 
 	return
+}
+
+func (l *Layouter) Initialize() {
+	l.Foundation.Initialize()
+	l.Paint = nil
 }
 
 func (l *Layouter) placeBlocks() {
@@ -46,14 +55,7 @@ func (l *Layouter) HandleEvents() {
 			l.HandleEvent(e)
 		case e := <-l.BlockInvalidations:
 			l.DoBlockInvalidation(e)
-
 		case bsh := <-l.BlockSizeHints:
-
-			if !l.Children[bsh.Block] {
-				// Do I know you?
-				break
-			}
-
 			l.engine.SetHint(bsh.Block, bsh.SizeHint)
 			l.placeBlocks()
 			l.SetSizeHint(l.engine.GetHint())

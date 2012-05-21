@@ -207,7 +207,7 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 			child.Drawer.Draw(child.buffer, subInv)
 		}
 
-		draw.Draw(buffer, r, child.buffer, image.Point{0, 0}, draw.Over)
+		draw.Draw(buffer, r, child.buffer, image.Point{0, 0}, f.DrawOp)
 	}
 }
 
