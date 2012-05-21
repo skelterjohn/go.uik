@@ -70,7 +70,7 @@ type Block struct {
 
 	HasKeyFocus bool
 
-	// size of block
+	// size of block 
 	Size geom.Coord
 }
 
