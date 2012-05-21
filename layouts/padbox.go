@@ -14,6 +14,11 @@ type PadLayout struct {
 
 	config PadConfig
 	hint   uik.SizeHint
+
+	add        chan *uik.Block
+	remove     chan *uik.Block
+	configs    chan interface{}
+	invalidate chan bool
 }
 
 func NewPadBox(config PadConfig, block *uik.Block) (pb *Layouter) {
@@ -49,6 +54,29 @@ func (p *PadLayout) GetLayout(size geom.Coord) (l Layout) {
 	}
 	return
 }
-func (p *PadLayout) SetAdd(add func(*uik.Block)) {
-	add(p.block)
+func (p *PadLayout) SetConfigUnsafe(cfg interface{}) {
+	config, ok := cfg.(PadConfig)
+	if ok {
+		p.config = config
+		p.invalidate <- true
+	}
+}
+func (p *PadLayout) SetAddChan(add chan *uik.Block) {
+	p.add = add
+	add <- p.block
+}
+func (p *PadLayout) SetRemoveChan(remove chan *uik.Block) {
+	p.remove = remove
+}
+func (p *PadLayout) SetConfigChan(configs chan interface{}) {
+	p.configs = configs
+}
+func (p *PadLayout) SetInvalidateChan(invalidate chan bool) {
+	p.invalidate = invalidate
+}
+
+func (p *PadLayout) SetBlock(block *uik.Block) {
+	p.remove <- p.block
+	p.block = block
+	p.add <- p.block
 }
