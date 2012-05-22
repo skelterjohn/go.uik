@@ -55,10 +55,17 @@ func (p *PadLayout) GetLayout(size geom.Coord) (l Layout) {
 	return
 }
 func (p *PadLayout) SetConfigUnsafe(cfg interface{}) {
-	config, ok := cfg.(PadConfig)
-	if ok {
-		p.config = config
+	switch x := cfg.(type) {
+	case PadConfig:
+		p.config = x
 		p.invalidate <- true
+	case *uik.Block:
+		if x == p.block {
+			break
+		}
+		p.remove <- p.block
+		p.block = x
+		p.add <- p.block
 	}
 }
 func (p *PadLayout) SetAddChan(add chan *uik.Block) {
@@ -76,7 +83,8 @@ func (p *PadLayout) SetInvalidateChan(invalidate chan bool) {
 }
 
 func (p *PadLayout) SetBlock(block *uik.Block) {
-	p.remove <- p.block
-	p.block = block
-	p.add <- p.block
+	p.configs <- block
+}
+func (p *PadLayout) SetConfig(cfg PadConfig) {
+	p.configs <- cfg
 }
