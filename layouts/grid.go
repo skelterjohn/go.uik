@@ -18,17 +18,19 @@ package layouts
 
 import (
 	"code.google.com/p/draw2d/draw2d"
+	"encoding/json"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
 	"image/color"
 	"image/draw"
+	"io"
 	"math"
 )
 
 func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
-		g.Add(BlockData{
+		g.Add(b, BlockData{
 			Block: b,
 			GridX: 0, GridY: i,
 			AnchorX: AnchorMin,
@@ -40,7 +42,7 @@ func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 func HBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
-		g.Add(BlockData{
+		g.Add(b, BlockData{
 			Block: b,
 			GridX: i, GridY: 0,
 			AnchorY: AnchorMin,
@@ -69,7 +71,19 @@ type BlockData struct {
 	MinSize, PreferredSize, MaxSize geom.Coord
 }
 
+type blockPair struct {
+	block  *uik.Block
+	config BlockData
+}
+
 type GridConfig struct {
+	Components map[string]BlockData
+}
+
+func ReadGridConfig(r io.Reader) (cfg GridConfig, err error) {
+	dec := json.NewDecoder(r)
+	err = dec.Decode(&cfg)
+	return
 }
 
 type Grid struct {
@@ -82,7 +96,7 @@ type Grid struct {
 	vflex, hflex   *flex
 	velems, helems map[*uik.Block]*elem
 
-	add       chan BlockData
+	add       chan blockPair
 	remove    chan *uik.Block
 	setConfig chan GridConfig
 	getConfig chan GridConfig
@@ -110,7 +124,7 @@ func (g *Grid) Initialize() {
 	g.children = map[*uik.Block]bool{}
 	g.childrenBlockData = map[*uik.Block]BlockData{}
 
-	g.add = make(chan BlockData, 1)
+	g.add = make(chan blockPair, 1)
 	g.remove = make(chan *uik.Block, 1)
 	g.setConfig = make(chan GridConfig, 1)
 	g.getConfig = make(chan GridConfig, 1)
@@ -126,8 +140,8 @@ func (g *Grid) Initialize() {
 	// }
 }
 
-func (g *Grid) Add(bd BlockData) {
-	g.add <- bd
+func (g *Grid) Add(b *uik.Block, bd BlockData) {
+	g.add <- blockPair{b, bd}
 }
 
 func (g *Grid) Remove(b *uik.Block) {
@@ -143,21 +157,21 @@ func (g *Grid) GetConfig() (cfg GridConfig) {
 	return
 }
 
-func (g *Grid) addBlock(bd BlockData) {
-	g.AddBlock(bd.Block)
-	g.children[bd.Block] = true
-	g.childrenBlockData[bd.Block] = bd
+func (g *Grid) addBlock(block *uik.Block, bd BlockData) {
+	g.AddBlock(block)
+	g.children[block] = true
+	g.childrenBlockData[block] = bd
 
 	helem := &elem{
 		index: bd.GridX,
 		extra: bd.ExtraX,
 	}
-	g.helems[bd.Block] = helem
+	g.helems[block] = helem
 	velem := &elem{
 		index: bd.GridY,
 		extra: bd.ExtraY,
 	}
-	g.velems[bd.Block] = velem
+	g.velems[block] = velem
 
 	g.hflex.add(helem)
 	g.vflex.add(velem)
@@ -378,8 +392,8 @@ func (g *Grid) handleEvents() {
 		case g.config = <-g.setConfig:
 			g.makePreferences()
 		case g.getConfig <- g.config:
-		case bd := <-g.add:
-			g.addBlock(bd)
+		case bp := <-g.add:
+			g.addBlock(bp.block, bp.config)
 		case b := <-g.remove:
 			g.remBlock(b)
 		}
