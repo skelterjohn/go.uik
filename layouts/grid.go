@@ -31,7 +31,6 @@ func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
 		g.Add(b, BlockData{
-			Block: b,
 			GridX: 0, GridY: i,
 			AnchorX: AnchorMin,
 		})
@@ -43,7 +42,6 @@ func HBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
 		g.Add(b, BlockData{
-			Block: b,
 			GridX: i, GridY: 0,
 			AnchorY: AnchorMin,
 		})
@@ -59,7 +57,6 @@ const (
 )
 
 type BlockData struct {
-	Block *uik.Block
 	// The coordinates for the top-left of the block's placement
 	GridX, GridY int
 	// How many extra columns and rows the block occupies
@@ -196,7 +193,7 @@ func (g *Grid) reflex(b *uik.Block) {
 	bd := g.childrenBlockData[b]
 	sh := g.ChildrenHints[b]
 
-	helem := g.helems[bd.Block]
+	helem := g.helems[b]
 	helem.minSize = sh.MinSize.X
 	helem.prefSize = sh.PreferredSize.X
 	helem.maxSize = math.Inf(1) //sh.MaxSize.X
@@ -212,7 +209,7 @@ func (g *Grid) reflex(b *uik.Block) {
 	helem.prefSize = math.Min(helem.maxSize, math.Max(helem.minSize, helem.prefSize))
 	helem.fix()
 
-	velem := g.velems[bd.Block]
+	velem := g.velems[b]
 	velem.minSize = sh.MinSize.Y
 	velem.prefSize = sh.PreferredSize.Y
 	velem.maxSize = math.Inf(1) //sh.MaxSize.Y

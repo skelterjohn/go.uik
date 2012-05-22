@@ -186,7 +186,6 @@ func (r *Radio) makeButtons(options []string) {
 		}, &ob.Block)
 
 		r.radioGrid.Add(&pb.Block, layouts.BlockData{
-			Block: &pb.Block,
 			GridX: 0, GridY: i,
 			AnchorX: layouts.AnchorMin | layouts.AnchorMax,
 			AnchorY: layouts.AnchorMin | layouts.AnchorMax,
