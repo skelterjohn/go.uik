@@ -22,7 +22,7 @@ import (
 	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
-	"os"
+	"sync"
 )
 
 type BlockSizeHint struct {
@@ -42,10 +42,11 @@ type Foundation struct {
 
 	DrawOp draw.Op
 
-	Children            map[*Block]bool
-	ChildrenBounds      map[*Block]geom.Rect
-	ChildrenLastBuffers map[*Block]image.Image
-	ChildrenHints       map[*Block]SizeHint
+	boundsGuard    sync.RWMutex
+	childrenBounds map[*Block]geom.Rect
+
+	Children      map[*Block]bool
+	ChildrenHints map[*Block]SizeHint
 
 	BlockSizeHints chan BlockSizeHint
 
@@ -62,9 +63,8 @@ func (f *Foundation) Initialize() {
 	f.DrawOp = draw.Over
 	f.BlockSizeHints = make(chan BlockSizeHint, 1)
 	f.Children = map[*Block]bool{}
-	f.ChildrenBounds = map[*Block]geom.Rect{}
+	f.childrenBounds = map[*Block]geom.Rect{}
 	f.ChildrenHints = map[*Block]SizeHint{}
-	f.ChildrenLastBuffers = map[*Block]image.Image{}
 	f.BlockInvalidations = make(chan BlockInvalidation, 1)
 	f.DragOriginBlocks = map[wde.Button][]*Block{}
 	f.Drawer = f
@@ -76,8 +76,7 @@ func (f *Foundation) RemoveBlock(b *Block) {
 		return
 	}
 	delete(f.Children, b)
-	delete(f.ChildrenBounds, b)
-	delete(f.ChildrenLastBuffers, b)
+	f.remChildBounds(b)
 	delete(f.ChildrenHints, b)
 	b.Parent = nil
 }
@@ -108,16 +107,6 @@ func (f *Foundation) AddBlock(b *Block) {
 
 	sizeHints := make(SizeHintChan, 1)
 	go func(b *Block, sizeHints chan SizeHint) {
-		// for {
-		// 	var sh SizeHint
-		// 	select {
-		// 	case sh = <-sizeHints:
-		// 	case f.BlockSizeHints <- BlockSizeHint{
-		// 		SizeHint: sh,
-		// 		Block:    b,
-		// 	}:
-		// 	}
-		// }
 		for sh := range sizeHints {
 			f.BlockSizeHints <- BlockSizeHint{
 				SizeHint: sh,
@@ -132,10 +121,41 @@ func (f *Foundation) AddBlock(b *Block) {
 	})
 }
 
+func (f *Foundation) setChildBounds(b *Block, bounds geom.Rect) {
+	f.boundsGuard.Lock()
+	defer f.boundsGuard.Unlock()
+
+	f.childrenBounds[b] = bounds
+}
+func (f *Foundation) getChildBounds(b *Block) (bounds geom.Rect) {
+	f.boundsGuard.RLock()
+	defer f.boundsGuard.RUnlock()
+
+	bounds = f.childrenBounds[b]
+	return
+}
+func (f *Foundation) remChildBounds(b *Block) {
+	f.boundsGuard.Lock()
+	defer f.boundsGuard.Unlock()
+
+	delete(f.childrenBounds, b)
+}
+func (f *Foundation) getChildBoundsMap() (cbounds map[*Block]geom.Rect) {
+	f.boundsGuard.RLock()
+	defer f.boundsGuard.RUnlock()
+
+	cbounds = make(map[*Block]geom.Rect)
+	for c, b := range f.childrenBounds {
+		cbounds[c] = b
+	}
+
+	return
+}
+
 func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 	// Report(f.ID, "placing", b.ID)
 	f.AddBlock(b)
-	f.ChildrenBounds[b] = bounds
+	f.setChildBounds(b, bounds)
 	b.ResizeEvents.Stack(ResizeEvent{
 		Size: geom.Coord{bounds.Max.X - bounds.Min.X, bounds.Max.Y - bounds.Min.Y},
 	})
@@ -143,13 +163,9 @@ func (f *Foundation) PlaceBlock(b *Block, bounds geom.Rect) {
 
 func (f *Foundation) BlocksForCoord(p geom.Coord) (bs []*Block) {
 	// quad-tree one day?
-	for bl := range f.Children {
-		bbs, ok := f.ChildrenBounds[bl]
-		if !ok {
-			continue
-		}
-		if bbs.ContainsCoord(p) {
-			bs = append(bs, bl)
+	for c, b := range f.getChildBoundsMap() {
+		if b.ContainsCoord(p) {
+			bs = append(bs, c)
 		}
 	}
 	return
@@ -157,13 +173,9 @@ func (f *Foundation) BlocksForCoord(p geom.Coord) (bs []*Block) {
 
 func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 	// quad-tree one day?
-	for bl := range f.Children {
-		bbs, ok := f.ChildrenBounds[bl]
-		if !ok {
-			continue
-		}
-		if bbs.ContainsCoord(p) {
-			foo(bl)
+	for c, b := range f.getChildBoundsMap() {
+		if b.ContainsCoord(p) {
+			foo(c)
 			return
 		}
 	}
@@ -176,8 +188,7 @@ func (f *Foundation) InvokeOnBlocksUnder(p geom.Coord, foo func(*Block)) {
 func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 	gc := draw2d.NewGraphicContext(buffer)
 	f.DoPaint(gc)
-	// TODO: ranging on f.ChildrenBounds is not threadsafe
-	for child, bounds := range f.ChildrenBounds {
+	for child, bounds := range f.getChildBoundsMap() {
 		r := RectangleForRect(bounds)
 
 		// only redraw those that have been invalidated or are
@@ -187,15 +198,6 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 				Max: image.Point{int(child.Size.X), int(child.Size.Y)},
 			}
 			if child.buffer == nil || child.buffer.Bounds() != or {
-				// srgba := buffer.(*image.RGBA).SubImage(r).(*image.RGBA)
-				// srgba.Rect.Max.X -= srgba.Rect.Min.X
-				// srgba.Rect.Max.Y -= srgba.Rect.Min.Y
-				// srgba.Rect.Min = image.Point{}
-				// child.buffer = srgba
-				bs := or.Size()
-				if bs.X < 0 || bs.Y < 0 {
-					os.Exit(0)
-				}
 				child.buffer = image.NewRGBA(or)
 			} else {
 				ZeroRGBA(child.buffer.(*image.RGBA))
@@ -212,7 +214,7 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 }
 
 func (f *Foundation) DoBlockInvalidation(e BlockInvalidation) {
-	cbounds, ok := f.ChildrenBounds[e.Block]
+	cbounds, ok := f.getChildBoundsMap()[e.Block]
 	if !ok {
 		return
 	}
@@ -311,7 +313,7 @@ func (f *Foundation) DoKeyEvent(e interface{}) {
 
 func (f *Foundation) DoMouseDownEvent(e MouseDownEvent) {
 	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
-		bbs := f.ChildrenBounds[b]
+		bbs := f.getChildBounds(b)
 		if b == nil {
 			return
 		}
@@ -330,7 +332,7 @@ func (f *Foundation) DoMouseMovedEvent(e MouseMovedEvent) {
 		fromSet[b] = true
 	})
 	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
-		bbs := f.ChildrenBounds[b]
+		bbs := f.getChildBounds(b)
 		if !fromSet[b] {
 			ee := MouseEnteredEvent{
 				Event:        e.Event,
@@ -349,7 +351,7 @@ func (f *Foundation) DoMouseMovedEvent(e MouseMovedEvent) {
 		b.UserEventsIn.SendOrDrop(ce)
 	})
 	for fromBlock := range fromSet {
-		bbs := f.ChildrenBounds[fromBlock]
+		bbs := f.getChildBounds(fromBlock)
 		ee := MouseExitedEvent{
 			Event:        e.Event,
 			MouseLocator: e.MouseLocator,
@@ -365,7 +367,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 	touched := map[*Block]bool{}
 	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
 		touched[b] = true
-		bbs := f.ChildrenBounds[b]
+		bbs := f.getChildBounds(b)
 		if b != nil {
 			be := e
 			be.Loc = be.Loc.Minus(bbs.Min)
@@ -378,7 +380,7 @@ func (f *Foundation) DoMouseUpEvent(e MouseUpEvent) {
 				continue
 			}
 			oe := e
-			obbs := f.ChildrenBounds[origin]
+			obbs := f.getChildBounds(origin)
 			oe.Loc = oe.Loc.Minus(obbs.Min)
 			origin.UserEventsIn.SendOrDrop(oe)
 		}
@@ -395,7 +397,7 @@ func (f *Foundation) DoMouseDraggedEvent(e MouseDraggedEvent) {
 	touched := map[*Block]bool{}
 	f.InvokeOnBlocksUnder(e.Loc, func(b *Block) {
 		touched[b] = true
-		bbs := f.ChildrenBounds[b]
+		bbs := f.getChildBounds(b)
 		if !fromSet[b] {
 			ee := MouseEnteredEvent{
 				Event:        e.Event,
@@ -417,7 +419,7 @@ func (f *Foundation) DoMouseDraggedEvent(e MouseDraggedEvent) {
 		}
 	})
 	for fromBlock := range fromSet {
-		bbs := f.ChildrenBounds[fromBlock]
+		bbs := f.getChildBounds(fromBlock)
 		ee := MouseExitedEvent{
 			Event:        e.Event,
 			MouseLocator: e.MouseLocator,
@@ -435,7 +437,7 @@ func (f *Foundation) DoMouseDraggedEvent(e MouseDraggedEvent) {
 			}
 			// Report(f.ID, "origin forward", origin.ID)
 			oe := e
-			obbs := f.ChildrenBounds[origin]
+			obbs := f.getChildBounds(origin)
 			oe.Loc = oe.Loc.Minus(obbs.Min)
 			oe.From = oe.From.Minus(obbs.Min)
 			origin.UserEventsIn.SendOrDrop(oe)
