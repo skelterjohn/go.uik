@@ -17,11 +17,11 @@
 package layouts
 
 import (
-	"code.google.com/p/draw2d/draw2d"
+	// "code.google.com/p/draw2d/draw2d"
 	"encoding/json"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
-	"image/color"
+	// "image/color"
 	"image/draw"
 	"io"
 	"math"
@@ -30,7 +30,7 @@ import (
 func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
-		g.Add(b, BlockData{
+		g.Add(b, GridComponent{
 			GridX: 0, GridY: i,
 			AnchorX: AnchorMin,
 		})
@@ -41,7 +41,7 @@ func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 func HBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	g = NewGrid(config)
 	for i, b := range blocks {
-		g.Add(b, BlockData{
+		g.Add(b, GridComponent{
 			GridX: i, GridY: 0,
 			AnchorY: AnchorMin,
 		})
@@ -56,7 +56,7 @@ const (
 	AnchorMax
 )
 
-type BlockData struct {
+type GridComponent struct {
 	// The coordinates for the top-left of the block's placement
 	GridX, GridY int
 	// How many extra columns and rows the block occupies
@@ -68,13 +68,20 @@ type BlockData struct {
 	MinSize, PreferredSize, MaxSize geom.Coord
 }
 
-type blockPair struct {
+type blockConfigPair struct {
 	block  *uik.Block
-	config BlockData
+	config GridComponent
 }
 
+type blockNamePair struct {
+	block *uik.Block
+	name  string
+}
+
+type removeBlock *uik.Block
+
 type GridConfig struct {
-	Components map[string]BlockData
+	Components map[string]GridComponent
 }
 
 func ReadGridConfig(r io.Reader) (cfg GridConfig, err error) {
@@ -86,14 +93,15 @@ func ReadGridConfig(r io.Reader) (cfg GridConfig, err error) {
 type Grid struct {
 	uik.Foundation
 
-	children          map[*uik.Block]bool
-	childrenBlockData map[*uik.Block]BlockData
-	config            GridConfig
+	children               map[*uik.Block]bool
+	childrenGridComponents map[*uik.Block]GridComponent
+	config                 GridConfig
 
 	vflex, hflex   *flex
 	velems, helems map[*uik.Block]*elem
 
-	add       chan blockPair
+	add       chan blockConfigPair
+	addName   chan blockNamePair
 	remove    chan *uik.Block
 	setConfig chan GridConfig
 	getConfig chan GridConfig
@@ -119,9 +127,10 @@ func (g *Grid) Initialize() {
 	g.DrawOp = draw.Over
 
 	g.children = map[*uik.Block]bool{}
-	g.childrenBlockData = map[*uik.Block]BlockData{}
+	g.childrenGridComponents = map[*uik.Block]GridComponent{}
 
-	g.add = make(chan blockPair, 1)
+	g.add = make(chan blockConfigPair, 1)
+	g.addName = make(chan blockNamePair, 1)
 	g.remove = make(chan *uik.Block, 1)
 	g.setConfig = make(chan GridConfig, 1)
 	g.getConfig = make(chan GridConfig, 1)
@@ -137,12 +146,19 @@ func (g *Grid) Initialize() {
 	// }
 }
 
-func (g *Grid) Add(b *uik.Block, bd BlockData) {
-	g.add <- blockPair{b, bd}
+func (g *Grid) Add(b *uik.Block, bd GridComponent) {
+	g.add <- blockConfigPair{b, bd}
+	//g.config <- blockConfigPair{b, bd}
+}
+
+func (g *Grid) AddName(name string, b *uik.Block) {
+	g.addName <- blockNamePair{b, name}
+	//g.config <- blockNamePair{b, name}
 }
 
 func (g *Grid) Remove(b *uik.Block) {
 	g.remove <- b
+	//g.config <- removeBlock(b)
 }
 
 func (g *Grid) SetConfig(cfg GridConfig) {
@@ -154,10 +170,10 @@ func (g *Grid) GetConfig() (cfg GridConfig) {
 	return
 }
 
-func (g *Grid) addBlock(block *uik.Block, bd BlockData) {
+func (g *Grid) addBlock(block *uik.Block, bd GridComponent) {
 	g.AddBlock(block)
 	g.children[block] = true
-	g.childrenBlockData[block] = bd
+	g.childrenGridComponents[block] = bd
 
 	helem := &elem{
 		index: bd.GridX,
@@ -181,7 +197,7 @@ func (g *Grid) remBlock(b *uik.Block) {
 	g.RemoveBlock(b)
 
 	delete(g.ChildrenHints, b)
-	delete(g.childrenBlockData, b)
+	delete(g.childrenGridComponents, b)
 
 	g.hflex.rem(g.helems[b])
 	g.vflex.rem(g.velems[b])
@@ -190,7 +206,7 @@ func (g *Grid) remBlock(b *uik.Block) {
 }
 
 func (g *Grid) reflex(b *uik.Block) {
-	bd := g.childrenBlockData[b]
+	bd := g.childrenGridComponents[b]
 	sh := g.ChildrenHints[b]
 
 	helem := g.helems[b]
@@ -227,26 +243,127 @@ func (g *Grid) reflex(b *uik.Block) {
 }
 
 func (g *Grid) makePreferences() {
-	var sizeHint uik.SizeHint
-	hmin, hpref, hmax := g.hflex.makePrefs()
-	vmin, vpref, vmax := g.vflex.makePrefs()
-	sizeHint.MinSize = geom.Coord{hmin, vmin}
-	sizeHint.PreferredSize = geom.Coord{hpref, vpref}
-	sizeHint.MaxSize = geom.Coord{hmax, vmax}
 	// uik.Report("prefs", g.Block.ID, sizeHint)
-	g.SetSizeHint(sizeHint)
+	g.SetSizeHint(g.GetHint())
 }
 
 func (g *Grid) regrid() {
+	layout := g.GetLayout(g.Size)
+	for b, bounds := range layout {
+		g.PlaceBlock(b, bounds)
+	}
 
-	_, minXs, maxXs := g.hflex.constrain(g.Size.X)
-	_, minYs, maxYs := g.vflex.constrain(g.Size.Y)
+	g.Invalidate()
+}
+
+/*
+func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
+	x1, y1 := min.X, min.Y
+	x2, y2 := max.X, max.Y
+	x, y := path.LastPoint()
+	path.MoveTo(x1, y1)
+	path.LineTo(x2, y1)
+	path.LineTo(x2, y2)
+	path.LineTo(x1, y2)
+	path.Close()
+	path.MoveTo(x, y)
+}
+
+func (g *Grid) draw(gc draw2d.GraphicContext) {
+	gc.Clear()
+	gc.SetFillColor(color.RGBA{150, 150, 150, 255})
+	safeRect(gc, geom.Coord{0, 0}, g.Size)
+	gc.FillStroke()
+
+	_, minXs, _ := g.hflex.constrain(g.Size.X)
+	for _, x := range minXs[1:] {
+		gc.MoveTo(x, 0)
+		gc.LineTo(x, g.Size.Y)
+
+	}
+	_, minYs, _ := g.vflex.constrain(g.Size.Y)
+	for _, y := range minYs[1:] {
+		gc.MoveTo(0, y)
+		gc.LineTo(g.Size.X, y)
+
+	}
+	gc.Stroke()
+	// _, _, maxYs := g.vflex.constrain(g.Size.Y)
+}
+*/
+
+func (g *Grid) handleEvents() {
+	for {
+		select {
+		case e := <-g.UserEvents:
+			switch e := e.(type) {
+			default:
+				g.Foundation.HandleEvent(e)
+			}
+		case bsh := <-g.BlockSizeHints:
+			g.SetHint(bsh.Block, bsh.SizeHint)
+		case e := <-g.BlockInvalidations:
+			g.DoBlockInvalidation(e)
+			// go uik.ShowBuffer("grid", g.Buffer)
+		case e := <-g.ResizeEvents:
+			g.Size = e.Size
+
+			// if g.Block.ID == 2 {
+			// 	uik.Report("sized", g.Block.ID, g.Size)
+			// }
+			g.regrid()
+			g.Invalidate()
+		case g.config = <-g.setConfig:
+			g.makePreferences()
+		case g.getConfig <- g.config:
+		case bp := <-g.add:
+			g.addBlock(bp.block, bp.config)
+		case bn := <-g.addName:
+			bd, ok := g.config.Components[bn.name]
+			if !ok {
+				//TODO: report
+				break
+			}
+			g.addBlock(bn.block, bd)
+		case b := <-g.remove:
+			g.remBlock(b)
+		}
+	}
+}
+
+func (g *Grid) SetHint(block *uik.Block, hint uik.SizeHint) {
+	if !g.children[block] {
+		// Do I know you?
+		return
+	}
+	g.ChildrenHints[block] = hint
+
+	g.reflex(block)
+	g.makePreferences()
+	g.regrid()
+}
+
+func (g *Grid) GetHint() (hint uik.SizeHint) {
+	hmin, hpref, hmax := g.hflex.makePrefs()
+	vmin, vpref, vmax := g.vflex.makePrefs()
+	hint.MinSize = geom.Coord{hmin, vmin}
+	hint.PreferredSize = geom.Coord{hpref, vpref}
+	hint.MaxSize = geom.Coord{hmax, vmax}
+	return
+}
+
+func (g *Grid) GetLayout(size geom.Coord) (layout Layout) {
+
+	layout = make(Layout)
+
+	_, minXs, maxXs := g.hflex.constrain(size.X)
+	_, minYs, maxYs := g.vflex.constrain(size.Y)
 
 	// if g.Block.ID == 2 {
 	// 	uik.Report("regrid", g.Block.ID, g.Size, whs, wvs)
 	// }
 	for child, csh := range g.ChildrenHints {
-		bd := g.childrenBlockData[child]
+		bd := g.childrenGridComponents[child]
 		gridBounds := geom.Rect{
 			Min: geom.Coord{
 				X: minXs[bd.GridX],
@@ -314,85 +431,15 @@ func (g *Grid) regrid() {
 			}
 		}
 
-		g.PlaceBlock(child, gridBounds)
+		layout[child] = gridBounds
 	}
 
-	g.Invalidate()
+	return
 }
 
-func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
-	x1, y1 := min.X, min.Y
-	x2, y2 := max.X, max.Y
-	x, y := path.LastPoint()
-	path.MoveTo(x1, y1)
-	path.LineTo(x2, y1)
-	path.LineTo(x2, y2)
-	path.LineTo(x1, y2)
-	path.Close()
-	path.MoveTo(x, y)
-}
-
-func (g *Grid) draw(gc draw2d.GraphicContext) {
-	gc.Clear()
-	gc.SetFillColor(color.RGBA{150, 150, 150, 255})
-	safeRect(gc, geom.Coord{0, 0}, g.Size)
-	gc.FillStroke()
-
-	_, minXs, _ := g.hflex.constrain(g.Size.X)
-	for _, x := range minXs[1:] {
-		gc.MoveTo(x, 0)
-		gc.LineTo(x, g.Size.Y)
-
-	}
-	_, minYs, _ := g.vflex.constrain(g.Size.Y)
-	for _, y := range minYs[1:] {
-		gc.MoveTo(0, y)
-		gc.LineTo(g.Size.X, y)
-
-	}
-	gc.Stroke()
-	// _, _, maxYs := g.vflex.constrain(g.Size.Y)
-}
-
-func (g *Grid) handleEvents() {
-	for {
-		select {
-		case e := <-g.UserEvents:
-			switch e := e.(type) {
-			default:
-				g.Foundation.HandleEvent(e)
-			}
-		case bsh := <-g.BlockSizeHints:
-			if !g.children[bsh.Block] {
-				// Do I know you?
-				break
-			}
-			g.ChildrenHints[bsh.Block] = bsh.SizeHint
-
-			// if g.Block.ID == 2 {
-			// 	uik.Report("gotpr", g.Block.ID, bsh.Block.ID, bsh.SizeHint)
-			// }
-			g.reflex(bsh.Block)
-			g.makePreferences()
-			g.regrid()
-		case e := <-g.BlockInvalidations:
-			g.DoBlockInvalidation(e)
-			// go uik.ShowBuffer("grid", g.Buffer)
-		case e := <-g.ResizeEvents:
-			g.Size = e.Size
-
-			// if g.Block.ID == 2 {
-			// 	uik.Report("sized", g.Block.ID, g.Size)
-			// }
-			g.regrid()
-			g.Invalidate()
-		case g.config = <-g.setConfig:
-			g.makePreferences()
-		case g.getConfig <- g.config:
-		case bp := <-g.add:
-			g.addBlock(bp.block, bp.config)
-		case b := <-g.remove:
-			g.remBlock(b)
-		}
+func (g *Grid) SetConfigUnsafe(cfg interface{}) {
+	switch cfg := cfg.(type) {
+	case GridConfig:
+		g.config = cfg
 	}
 }
