@@ -67,43 +67,38 @@ func uiktest() {
 
 	kg := widgets.NewKeyGrab(geom.Coord{50, 50})
 
-	g := layouts.NewGrid(layouts.GridConfig{})
+	ge := layouts.NewGridEngine(layouts.GridConfig{})
+	g := layouts.NewLayouter(ge)
 
 	l0_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"0, 0", 12, color.Black})
 	l0_1 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"0, 1", 12, color.Black})
 	l1_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"1, 0", 12, color.Black})
 	l1_1 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"1, 1", 12, color.Black})
 
-	g.Add(layouts.BlockData{
-		Block: &l0_0.Block,
+	ge.Add(&l0_0.Block, layouts.GridComponent{
 		GridX: 0, GridY: 0,
 	})
-	g.Add(layouts.BlockData{
-		Block: &l0_1.Block,
+	ge.Add(&l0_1.Block, layouts.GridComponent{
 		GridX: 0, GridY: 1,
 	})
-	g.Add(layouts.BlockData{
-		Block: &l1_0.Block,
+	ge.Add(&l1_0.Block, layouts.GridComponent{
 		GridX: 1, GridY: 0,
 		MinSize: geom.Coord{60, 60},
 		AnchorX: layouts.AnchorMax,
 		AnchorY: layouts.AnchorMax,
 	})
-	g.Add(layouts.BlockData{
-		Block: &l1_1.Block,
+	ge.Add(&l1_1.Block, layouts.GridComponent{
 		GridX: 1, GridY: 1,
 		AnchorX: layouts.AnchorMin,
 		AnchorY: layouts.AnchorMin,
 	})
-	g.Add(layouts.BlockData{
-		Block: &widgets.NewButton("Spanner").Block,
+	ge.Add(&widgets.NewButton("Spanner").Block, layouts.GridComponent{
 		GridX: 0, GridY: 2,
 		ExtraX:  1,
 		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
 		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
 	})
-	g.Add(layouts.BlockData{
-		Block: &widgets.NewButton("Offset Spanner").Block,
+	ge.Add(&widgets.NewButton("Offset Spanner").Block, layouts.GridComponent{
 		GridX: 1, GridY: 3,
 		ExtraX:  1,
 		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
@@ -117,8 +112,7 @@ func uiktest() {
 			im := widgets.NewImage(widgets.ImageConfig{
 				Image: gordonImage,
 			})
-			g.Add(layouts.BlockData{
-				Block: &im.Block,
+			ge.Add(&im.Block, layouts.GridComponent{
 				GridX: 0, GridY: 4,
 				ExtraX: 2,
 			})

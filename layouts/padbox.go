@@ -72,6 +72,9 @@ func (p *PadLayout) GetLayout(size geom.Coord) (l Layout) {
 	}
 	return
 }
+
+// Do not call this method except from within the containing
+// Layout's goroutine. 
 func (p *PadLayout) ConfigUnsafe(cfg interface{}) {
 	switch x := cfg.(type) {
 	case PadConfig:
