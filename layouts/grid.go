@@ -31,7 +31,7 @@ func VBox(config GridConfig, blocks ...*uik.Block) (l *Layouter) {
 	for i, b := range blocks {
 		g.Add(b, GridComponent{
 			GridX: 0, GridY: i,
-			AnchorX: AnchorMin,
+			AnchorLeft: true,
 		})
 	}
 	return
@@ -43,7 +43,7 @@ func HBox(config GridConfig, blocks ...*uik.Block) (l *Layouter) {
 	for i, b := range blocks {
 		g.Add(b, GridComponent{
 			GridX: i, GridY: 0,
-			AnchorY: AnchorMin,
+			AnchorTop: true,
 		})
 	}
 	return
@@ -63,7 +63,8 @@ type GridComponent struct {
 	ExtraX, ExtraY int
 	// AnchorX and AnchorY get the bit flags from AnchorMin and AnchorMax. The
 	// zero value means they will float in the center.
-	AnchorX, AnchorY Anchor
+	AnchorTop, AnchorBottom bool
+	AnchorLeft, AnchorRight bool
 	// The zero-values for MinSize, PreferredSize and MaxSize tell the grid to ignore them
 	MinSize, PreferredSize, MaxSize geom.Coord
 }
@@ -259,56 +260,56 @@ func (g *GridEngine) GetLayout(size geom.Coord) (layout Layout) {
 		gridSizeX, gridSizeY := gridBounds.Size()
 		if gridSizeX > csh.MaxSize.X {
 			diff := gridSizeX - csh.MaxSize.X
-			switch bd.AnchorX {
-			case 0:
+			if !bd.AnchorLeft && !bd.AnchorRight {
 				gridBounds.Min.X += diff / 2
 				gridBounds.Max.X -= diff / 2
-			case AnchorMin:
+			}
+			if bd.AnchorLeft && !bd.AnchorRight {
 				gridBounds.Max.X -= diff
-			case AnchorMax:
+			}
+			if !bd.AnchorLeft && bd.AnchorRight {
 				gridBounds.Min.X += diff
-			case AnchorMin | AnchorMax:
 			}
 		}
 		if gridSizeY > csh.MaxSize.Y {
 			diff := gridSizeY - csh.MaxSize.Y
-			switch bd.AnchorY {
-			case 0:
+			if !bd.AnchorTop && !bd.AnchorBottom {
 				gridBounds.Min.Y += diff / 2
 				gridBounds.Max.Y -= diff / 2
-			case AnchorMin:
+			}
+			if bd.AnchorTop && !bd.AnchorBottom {
 				gridBounds.Max.Y -= diff
-			case AnchorMax:
+			}
+			if !bd.AnchorTop && bd.AnchorBottom {
 				gridBounds.Min.Y += diff
-			case AnchorMin | AnchorMax:
 			}
 		}
 
 		gridSizeX, gridSizeY = gridBounds.Size()
 		if gridSizeX > csh.PreferredSize.X {
 			diff := gridSizeX - csh.PreferredSize.X
-			switch bd.AnchorX {
-			case 0:
+			if !bd.AnchorLeft && !bd.AnchorRight {
 				gridBounds.Min.X += diff / 2
 				gridBounds.Max.X -= diff / 2
-			case AnchorMin:
+			}
+			if bd.AnchorLeft && !bd.AnchorRight {
 				gridBounds.Max.X -= diff
-			case AnchorMax:
+			}
+			if !bd.AnchorLeft && bd.AnchorRight {
 				gridBounds.Min.X += diff
-			case AnchorMin | AnchorMax:
 			}
 		}
 		if gridSizeY > csh.PreferredSize.Y {
 			diff := gridSizeY - csh.PreferredSize.Y
-			switch bd.AnchorY {
-			case 0:
+			if !bd.AnchorTop && !bd.AnchorBottom {
 				gridBounds.Min.Y += diff / 2
 				gridBounds.Max.Y -= diff / 2
-			case AnchorMin:
+			}
+			if bd.AnchorTop && !bd.AnchorBottom {
 				gridBounds.Max.Y -= diff
-			case AnchorMax:
+			}
+			if !bd.AnchorTop && bd.AnchorBottom {
 				gridBounds.Min.Y += diff
-			case AnchorMin | AnchorMax:
 			}
 		}
 

@@ -31,14 +31,14 @@ func uikplay() {
 		"radio": {
 			"GridX": 0,
 			"GridY": 0,
-			"AnchorX": 1,
-			"AnchorY": 1
+			"AnchorLeft": true,
+			"AnchorTop": true
 		},
 		"label": {
 			"GridX": 1,
 			"GridY": 0,
-			"AnchorX": 2,
-			"AnchorY": 1
+			"AnchorRight": true,
+			"AnchorTop": true
 		}
 	}
 }

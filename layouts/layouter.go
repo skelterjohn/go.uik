@@ -74,7 +74,6 @@ func NewLayouter(engine LayoutEngine) (l *Layouter) {
 func (l *Layouter) Initialize() {
 	l.Foundation.Initialize()
 	l.config = make(chan interface{}, 1)
-	l.Paint = nil
 }
 
 func (l *Layouter) placeBlocks() {

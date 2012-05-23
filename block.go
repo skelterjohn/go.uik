@@ -77,7 +77,6 @@ type Block struct {
 func (b *Block) Initialize() {
 	b.ID = <-blockIDs
 
-	b.Paint = ClearPaint
 	b.Drawer = b
 
 	b.UserEventsIn, b.UserEvents, b.Subscribe = SubscriptionQueue(20)
