@@ -44,7 +44,9 @@ func ZeroRGBA(rgba *image.RGBA) {
 type PaintFunc func(draw2d.GraphicContext)
 type PaintGen func(interface{}) PaintFunc
 
-var paintGens = map[string]PaintGen{}
+var paintGens = map[string]PaintGen{
+	"window": windowPaintGen,
+}
 
 func RegisterPaint(path string, dg PaintGen) {
 	paintGens[path] = dg
@@ -56,5 +58,15 @@ func LookupPaint(path string, x interface{}) (pf PaintFunc) {
 		return
 	}
 	pf = pg(x)
+	return
+}
+
+func windowPaintGen(x interface{}) (pf PaintFunc) {
+	wf := x.(*WindowFoundation)
+	return func(gc draw2d.GraphicContext) {
+		gc.SetFillColor(color.White)
+		draw2d.Rect(gc, 0, 0, wf.Size.X, wf.Size.Y)
+		gc.Fill()
+	}
 	return
 }

@@ -71,7 +71,8 @@ func (wf *WindowFoundation) Initialize() {
 	wf.Invalidations = make(chan Invalidation, 1)
 	wf.paneCh = make(chan *Block, 1)
 
-	wf.Paint = ClearPaint
+	wf.Paint = LookupPaint("window", wf)
+	wf.DrawOp = draw.Over
 
 	// Report("wfound is", wf.ID)
 
@@ -240,7 +241,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				scrBuf = image.NewRGBA(scr.Bounds())
 				invalidRects = RectSet{wf.Bounds()}
 			}
-			wf.pane.Drawer.Draw(scrBuf, invalidRects)
+			wf.Drawer.Draw(scrBuf, invalidRects)
 			for _, ir := range invalidRects {
 				si := scrBuf.SubImage(RectangleForRect(ir))
 				draw.Draw(scr, scr.Bounds(), si, image.Point{}, draw.Src)

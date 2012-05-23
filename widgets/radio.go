@@ -56,7 +56,8 @@ type Radio struct {
 	removeSelectionListener chan SelectionListener
 	RemoveSelectionListener <-chan SelectionListener
 
-	radioGrid *layouts.Grid
+	radioGrid   *layouts.GridEngine
+	radioLayout *layouts.Layouter
 }
 
 func NewRadio(options []string) (r *Radio) {
@@ -91,9 +92,11 @@ func (r *Radio) Initialize() {
 
 	r.selection = -1
 
-	r.radioGrid = layouts.NewGrid(layouts.GridConfig{})
-	r.AddBlock(&r.radioGrid.Block)
-	r.radioGrid.Paint = nil
+	r.radioGrid = layouts.NewGridEngine(layouts.GridConfig{})
+	r.radioLayout = layouts.NewLayouter(r.radioGrid)
+
+	r.AddBlock(&r.radioLayout.Block)
+	r.radioLayout.Paint = nil
 
 	r.Paint = func(gc draw2d.GraphicContext) {
 		gc.SetFillColor(color.Black)
@@ -110,7 +113,7 @@ func (r *Radio) HandleEvents() {
 			r.HandleEvent(e)
 		case e := <-r.ResizeEvents:
 			r.Foundation.DoResizeEvent(e)
-			r.PlaceBlock(&r.radioGrid.Block, geom.Rect{Max: r.Size})
+			r.PlaceBlock(&r.radioLayout.Block, geom.Rect{Max: r.Size})
 		case options := <-r.setOptions:
 			r.makeButtons(options)
 		case r.selection = <-r.setSelection:
@@ -124,7 +127,7 @@ func (r *Radio) HandleEvents() {
 		case r.getSelection <- r.selection:
 		case bsh := <-r.BlockSizeHints:
 			r.ChildrenHints[bsh.Block] = bsh.SizeHint
-			if bsh.Block != &r.radioGrid.Block {
+			if bsh.Block != &r.radioLayout.Block {
 				// who is this?
 				break
 			}

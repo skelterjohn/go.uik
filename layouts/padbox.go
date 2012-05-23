@@ -26,15 +26,12 @@ type PadConfig struct {
 }
 
 type PadLayout struct {
+	layouter *Layouter
+
 	block *uik.Block
 
 	config PadConfig
 	hint   uik.SizeHint
-
-	add        chan *uik.Block
-	remove     chan *uik.Block
-	configs    chan interface{}
-	invalidate chan bool
 }
 
 func NewPadBox(config PadConfig, block *uik.Block) (pb *Layouter) {
@@ -48,6 +45,11 @@ func NewPadLayout(config PadConfig, block *uik.Block) (p *PadLayout) {
 	p.block = block
 	return
 }
+
+func (p *PadLayout) SetLayouter(layouter *Layouter) {
+	p.layouter = layouter
+}
+
 func (p *PadLayout) SetHint(block *uik.Block, hint uik.SizeHint) {
 	if block == p.block {
 		p.hint = hint
@@ -74,33 +76,20 @@ func (p *PadLayout) SetConfigUnsafe(cfg interface{}) {
 	switch x := cfg.(type) {
 	case PadConfig:
 		p.config = x
-		p.invalidate <- true
+		p.layouter.Invalidate()
 	case *uik.Block:
 		if x == p.block {
 			break
 		}
-		p.remove <- p.block
+		p.layouter.RemoveBlock(p.block)
 		p.block = x
-		p.add <- p.block
+		p.layouter.AddBlock(p.block)
 	}
-}
-func (p *PadLayout) SetAddChan(add chan *uik.Block) {
-	p.add = add
-	add <- p.block
-}
-func (p *PadLayout) SetRemoveChan(remove chan *uik.Block) {
-	p.remove = remove
-}
-func (p *PadLayout) SetConfigChan(configs chan interface{}) {
-	p.configs = configs
-}
-func (p *PadLayout) SetInvalidateChan(invalidate chan bool) {
-	p.invalidate = invalidate
 }
 
 func (p *PadLayout) SetBlock(block *uik.Block) {
-	p.configs <- block
+	p.layouter.Config(block)
 }
 func (p *PadLayout) SetConfig(cfg PadConfig) {
-	p.configs <- cfg
+	p.layouter.Config(cfg)
 }

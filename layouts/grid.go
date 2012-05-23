@@ -17,18 +17,17 @@
 package layouts
 
 import (
-	// "code.google.com/p/draw2d/draw2d"
 	"encoding/json"
 	"github.com/skelterjohn/geom"
 	"github.com/skelterjohn/go.uik"
-	// "image/color"
-	"image/draw"
 	"io"
+	"log"
 	"math"
 )
 
-func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
-	g = NewGrid(config)
+func VBox(config GridConfig, blocks ...*uik.Block) (l *Layouter) {
+	g := NewGridEngine(config)
+	l = NewLayouter(g)
 	for i, b := range blocks {
 		g.Add(b, GridComponent{
 			GridX: 0, GridY: i,
@@ -38,8 +37,9 @@ func VBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
 	return
 }
 
-func HBox(config GridConfig, blocks ...*uik.Block) (g *Grid) {
-	g = NewGrid(config)
+func HBox(config GridConfig, blocks ...*uik.Block) (l *Layouter) {
+	g := NewGridEngine(config)
+	l = NewLayouter(g)
 	for i, b := range blocks {
 		g.Add(b, GridComponent{
 			GridX: i, GridY: 0,
@@ -90,50 +90,31 @@ func ReadGridConfig(r io.Reader) (cfg GridConfig, err error) {
 	return
 }
 
-type Grid struct {
-	uik.Foundation
+type GridEngine struct {
+	layouter *Layouter
 
-	children               map[*uik.Block]bool
+	childrenHints          map[*uik.Block]uik.SizeHint
 	childrenGridComponents map[*uik.Block]GridComponent
 	config                 GridConfig
 
 	vflex, hflex   *flex
 	velems, helems map[*uik.Block]*elem
 
-	add       chan blockConfigPair
-	addName   chan blockNamePair
-	remove    chan *uik.Block
-	setConfig chan GridConfig
-	getConfig chan GridConfig
+	configs chan interface{}
 }
 
-func NewGrid(cfg GridConfig) (g *Grid) {
-	g = new(Grid)
-
-	g.config = cfg
-
-	g.Initialize()
-	if uik.ReportIDs {
-		uik.Report(g.ID, "grid")
-	}
-
-	go g.handleEvents()
-
+func NewGrid(cfg GridConfig) (l *Layouter) {
+	g := NewGridEngine(cfg)
+	l = NewLayouter(g)
 	return
 }
 
-func (g *Grid) Initialize() {
-	g.Foundation.Initialize()
-	g.DrawOp = draw.Over
+func NewGridEngine(config GridConfig) (g *GridEngine) {
+	g = new(GridEngine)
+	g.config = config
 
-	g.children = map[*uik.Block]bool{}
+	g.childrenHints = make(map[*uik.Block]uik.SizeHint)
 	g.childrenGridComponents = map[*uik.Block]GridComponent{}
-
-	g.add = make(chan blockConfigPair, 1)
-	g.addName = make(chan blockNamePair, 1)
-	g.remove = make(chan *uik.Block, 1)
-	g.setConfig = make(chan GridConfig, 1)
-	g.getConfig = make(chan GridConfig, 1)
 
 	g.hflex = &flex{}
 	g.vflex = &flex{}
@@ -141,38 +122,33 @@ func (g *Grid) Initialize() {
 	g.helems = map[*uik.Block]*elem{}
 	g.velems = map[*uik.Block]*elem{}
 
-	// g.Paint = func(gc draw2d.GraphicContext) {
-	// 	g.draw(gc)
-	// }
-}
-
-func (g *Grid) Add(b *uik.Block, bd GridComponent) {
-	g.add <- blockConfigPair{b, bd}
-	//g.config <- blockConfigPair{b, bd}
-}
-
-func (g *Grid) AddName(name string, b *uik.Block) {
-	g.addName <- blockNamePair{b, name}
-	//g.config <- blockNamePair{b, name}
-}
-
-func (g *Grid) Remove(b *uik.Block) {
-	g.remove <- b
-	//g.config <- removeBlock(b)
-}
-
-func (g *Grid) SetConfig(cfg GridConfig) {
-	g.setConfig <- cfg
-}
-
-func (g *Grid) GetConfig() (cfg GridConfig) {
-	cfg = <-g.getConfig
 	return
 }
 
-func (g *Grid) addBlock(block *uik.Block, bd GridComponent) {
-	g.AddBlock(block)
-	g.children[block] = true
+func (g *GridEngine) SetLayouter(layouter *Layouter) {
+	g.layouter = layouter
+}
+
+func (g *GridEngine) Add(b *uik.Block, bd GridComponent) {
+	g.layouter.Config(blockConfigPair{b, bd})
+}
+
+func (g *GridEngine) AddName(name string, b *uik.Block) {
+	// uik.Report(g.layouter.ID, "add", name)
+	g.layouter.Config(blockNamePair{b, name})
+}
+
+func (g *GridEngine) Remove(b *uik.Block) {
+	g.layouter.Config(removeBlock(b))
+}
+
+func (g *GridEngine) SetConfig(cfg GridConfig) {
+	g.layouter.Config(cfg)
+}
+
+func (g *GridEngine) addBlock(block *uik.Block, bd GridComponent) {
+
+	g.layouter.AddBlock(block)
 	g.childrenGridComponents[block] = bd
 
 	helem := &elem{
@@ -190,24 +166,21 @@ func (g *Grid) addBlock(block *uik.Block, bd GridComponent) {
 	g.vflex.add(velem)
 }
 
-func (g *Grid) remBlock(b *uik.Block) {
-	if !g.children[b] {
-		return
-	}
-	g.RemoveBlock(b)
+func (g *GridEngine) remBlock(b *uik.Block) {
+	g.layouter.RemoveBlock(b)
 
-	delete(g.ChildrenHints, b)
+	delete(g.childrenHints, b)
 	delete(g.childrenGridComponents, b)
 
 	g.hflex.rem(g.helems[b])
 	g.vflex.rem(g.velems[b])
 
-	g.regrid()
+	g.layouter.Invalidate()
 }
 
-func (g *Grid) reflex(b *uik.Block) {
+func (g *GridEngine) reflex(b *uik.Block) {
 	bd := g.childrenGridComponents[b]
-	sh := g.ChildrenHints[b]
+	sh := g.childrenHints[b]
 
 	helem := g.helems[b]
 	helem.minSize = sh.MinSize.X
@@ -242,117 +215,24 @@ func (g *Grid) reflex(b *uik.Block) {
 	velem.fix()
 }
 
-func (g *Grid) makePreferences() {
-	// uik.Report("prefs", g.Block.ID, sizeHint)
-	g.SetSizeHint(g.GetHint())
-}
-
-func (g *Grid) regrid() {
-	layout := g.GetLayout(g.Size)
-	for b, bounds := range layout {
-		g.PlaceBlock(b, bounds)
-	}
-
-	g.Invalidate()
-}
-
-/*
-func safeRect(path draw2d.GraphicContext, min, max geom.Coord) {
-	x1, y1 := min.X, min.Y
-	x2, y2 := max.X, max.Y
-	x, y := path.LastPoint()
-	path.MoveTo(x1, y1)
-	path.LineTo(x2, y1)
-	path.LineTo(x2, y2)
-	path.LineTo(x1, y2)
-	path.Close()
-	path.MoveTo(x, y)
-}
-
-func (g *Grid) draw(gc draw2d.GraphicContext) {
-	gc.Clear()
-	gc.SetFillColor(color.RGBA{150, 150, 150, 255})
-	safeRect(gc, geom.Coord{0, 0}, g.Size)
-	gc.FillStroke()
-
-	_, minXs, _ := g.hflex.constrain(g.Size.X)
-	for _, x := range minXs[1:] {
-		gc.MoveTo(x, 0)
-		gc.LineTo(x, g.Size.Y)
-
-	}
-	_, minYs, _ := g.vflex.constrain(g.Size.Y)
-	for _, y := range minYs[1:] {
-		gc.MoveTo(0, y)
-		gc.LineTo(g.Size.X, y)
-
-	}
-	gc.Stroke()
-	// _, _, maxYs := g.vflex.constrain(g.Size.Y)
-}
-*/
-
-func (g *Grid) handleEvents() {
-	for {
-		select {
-		case e := <-g.UserEvents:
-			switch e := e.(type) {
-			default:
-				g.Foundation.HandleEvent(e)
-			}
-		case bsh := <-g.BlockSizeHints:
-			g.SetHint(bsh.Block, bsh.SizeHint)
-		case e := <-g.BlockInvalidations:
-			g.DoBlockInvalidation(e)
-			// go uik.ShowBuffer("grid", g.Buffer)
-		case e := <-g.ResizeEvents:
-			g.Size = e.Size
-
-			// if g.Block.ID == 2 {
-			// 	uik.Report("sized", g.Block.ID, g.Size)
-			// }
-			g.regrid()
-			g.Invalidate()
-		case g.config = <-g.setConfig:
-			g.makePreferences()
-		case g.getConfig <- g.config:
-		case bp := <-g.add:
-			g.addBlock(bp.block, bp.config)
-		case bn := <-g.addName:
-			bd, ok := g.config.Components[bn.name]
-			if !ok {
-				//TODO: report
-				break
-			}
-			g.addBlock(bn.block, bd)
-		case b := <-g.remove:
-			g.remBlock(b)
-		}
-	}
-}
-
-func (g *Grid) SetHint(block *uik.Block, hint uik.SizeHint) {
-	if !g.children[block] {
-		// Do I know you?
-		return
-	}
-	g.ChildrenHints[block] = hint
+func (g *GridEngine) SetHint(block *uik.Block, hint uik.SizeHint) {
+	g.childrenHints[block] = hint
 
 	g.reflex(block)
-	g.makePreferences()
-	g.regrid()
+	g.layouter.Invalidate()
 }
 
-func (g *Grid) GetHint() (hint uik.SizeHint) {
+func (g *GridEngine) GetHint() (hint uik.SizeHint) {
 	hmin, hpref, hmax := g.hflex.makePrefs()
 	vmin, vpref, vmax := g.vflex.makePrefs()
 	hint.MinSize = geom.Coord{hmin, vmin}
 	hint.PreferredSize = geom.Coord{hpref, vpref}
 	hint.MaxSize = geom.Coord{hmax, vmax}
+
 	return
 }
 
-func (g *Grid) GetLayout(size geom.Coord) (layout Layout) {
+func (g *GridEngine) GetLayout(size geom.Coord) (layout Layout) {
 
 	layout = make(Layout)
 
@@ -362,7 +242,8 @@ func (g *Grid) GetLayout(size geom.Coord) (layout Layout) {
 	// if g.Block.ID == 2 {
 	// 	uik.Report("regrid", g.Block.ID, g.Size, whs, wvs)
 	// }
-	for child, csh := range g.ChildrenHints {
+
+	for child, csh := range g.childrenHints {
 		bd := g.childrenGridComponents[child]
 		gridBounds := geom.Rect{
 			Min: geom.Coord{
@@ -432,14 +313,25 @@ func (g *Grid) GetLayout(size geom.Coord) (layout Layout) {
 		}
 
 		layout[child] = gridBounds
+
 	}
 
 	return
 }
 
-func (g *Grid) SetConfigUnsafe(cfg interface{}) {
+func (g *GridEngine) SetConfigUnsafe(cfg interface{}) {
+	// uik.Report(g.layouter.ID, "cfg", cfg)
 	switch cfg := cfg.(type) {
 	case GridConfig:
 		g.config = cfg
+	case blockConfigPair:
+		g.addBlock(cfg.block, cfg.config)
+	case blockNamePair:
+		componentConfig, ok := g.config.Components[cfg.name]
+		if !ok {
+			log.Print("GridEngine with Layouter", g.layouter.ID, ": unknown name", cfg.name)
+			return
+		}
+		g.addBlock(cfg.block, componentConfig)
 	}
 }
