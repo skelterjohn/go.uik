@@ -22,7 +22,7 @@ import (
 )
 
 type PadConfig struct {
-	MinX, MinY, MaxX, MaxY float64
+	Left, Top, Right, Bottom float64
 }
 
 type PadLayout struct {
@@ -56,19 +56,19 @@ func (p *PadLayout) SetHint(block *uik.Block, hint uik.SizeHint) {
 	}
 }
 func (p *PadLayout) GetHint() (hint uik.SizeHint) {
-	hint.MinSize.X = p.hint.MinSize.X + p.config.MinX + p.config.MaxX
-	hint.MinSize.Y = p.hint.MinSize.Y + p.config.MinY + p.config.MaxY
-	hint.PreferredSize.X = p.hint.PreferredSize.X + p.config.MinX + p.config.MaxX
-	hint.PreferredSize.Y = p.hint.PreferredSize.Y + p.config.MinY + p.config.MaxY
-	hint.MaxSize.X = p.hint.MaxSize.X + p.config.MinX + p.config.MaxX
-	hint.MaxSize.Y = p.hint.MaxSize.Y + p.config.MinY + p.config.MaxY
+	hint.MinSize.X = p.hint.MinSize.X + p.config.Left + p.config.Right
+	hint.MinSize.Y = p.hint.MinSize.Y + p.config.Top + p.config.Bottom
+	hint.PreferredSize.X = p.hint.PreferredSize.X + p.config.Left + p.config.Right
+	hint.PreferredSize.Y = p.hint.PreferredSize.Y + p.config.Top + p.config.Bottom
+	hint.MaxSize.X = p.hint.MaxSize.X + p.config.Left + p.config.Right
+	hint.MaxSize.Y = p.hint.MaxSize.Y + p.config.Top + p.config.Bottom
 	return
 }
 func (p *PadLayout) GetLayout(size geom.Coord) (l Layout) {
 	l = make(Layout)
 	l[p.block] = geom.Rect{
-		Min: geom.Coord{p.config.MinX, p.config.MinY},
-		Max: geom.Coord{size.X - p.config.MaxX, size.Y - p.config.MaxY},
+		Min: geom.Coord{p.config.Left, p.config.Top},
+		Max: geom.Coord{size.X - p.config.Right, size.Y - p.config.Bottom},
 	}
 	return
 }

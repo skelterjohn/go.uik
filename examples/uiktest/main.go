@@ -83,26 +83,30 @@ func uiktest() {
 	})
 	ge.Add(&l1_0.Block, layouts.GridComponent{
 		GridX: 1, GridY: 0,
-		MinSize: geom.Coord{60, 60},
-		AnchorX: layouts.AnchorMax,
-		AnchorY: layouts.AnchorMax,
+		MinSize:      geom.Coord{60, 60},
+		AnchorRight:  true,
+		AnchorBottom: true,
 	})
 	ge.Add(&l1_1.Block, layouts.GridComponent{
 		GridX: 1, GridY: 1,
-		AnchorX: layouts.AnchorMin,
-		AnchorY: layouts.AnchorMin,
+		AnchorRight: true,
+		AnchorTop:   true,
 	})
 	ge.Add(&widgets.NewButton("Spanner").Block, layouts.GridComponent{
 		GridX: 0, GridY: 2,
-		ExtraX:  1,
-		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
-		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
+		ExtraX:       1,
+		AnchorLeft:   true,
+		AnchorRight:  true,
+		AnchorTop:    true,
+		AnchorBottom: true,
 	})
 	ge.Add(&widgets.NewButton("Offset Spanner").Block, layouts.GridComponent{
 		GridX: 1, GridY: 3,
-		ExtraX:  1,
-		AnchorX: layouts.AnchorMin | layouts.AnchorMax,
-		AnchorY: layouts.AnchorMin | layouts.AnchorMax,
+		ExtraX:       1,
+		AnchorLeft:   true,
+		AnchorRight:  true,
+		AnchorTop:    true,
+		AnchorBottom: true,
 	})
 
 	if true {

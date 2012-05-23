@@ -184,8 +184,8 @@ func (r *Radio) makeButtons(options []string) {
 		r.buttonsDone[i] = make(chan bool, 1)
 
 		pb := layouts.NewPadBox(layouts.PadConfig{
-			MinX: 2, MinY: 2,
-			MaxX: 2, MaxY: 2,
+			Left: 2, Right: 2,
+			Top: 2, Bottom: 2,
 		}, &ob.Block)
 
 		r.radioGrid.Add(&pb.Block, layouts.GridComponent{

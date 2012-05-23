@@ -55,18 +55,9 @@ func uikplay() {
 	ge.AddName("radio", &rg.Block)
 
 	l := widgets.NewLabel(geom.Coord{100, 30}, widgets.LabelConfig{"text", 14, color.Black})
-	ge.AddName("label", &l.Block)
+	ge.AddName("label", &layouts.NewPadBox(layouts.PadConfig{Right: 10}, &l.Block).Block)
 
 	selLis := make(widgets.SelectionListener, 1)
-	go func() {
-		for sel := range selLis {
-			l.SetConfig(widgets.LabelConfig{
-				Text:     fmt.Sprintf("Clicked option %d, %q", sel.Index, sel.Option),
-				FontSize: 14,
-				Color:    color.Black,
-			})
-		}
-	}()
 	rg.AddSelectionListener <- selLis
 
 	w.SetPane(&g.Block)
@@ -81,7 +72,19 @@ func uikplay() {
 	}
 	w.Block.Subscribe <- uik.Subscription{isDone, done}
 
-	<-done
+loop:
+	for {
+		select {
+		case sel := <-selLis:
+			l.SetConfig(widgets.LabelConfig{
+				Text:     fmt.Sprintf("Clicked option %d, %q", sel.Index, sel.Option),
+				FontSize: 14,
+				Color:    color.Black,
+			})
+		case <-done:
+			break loop
+		}
+	}
 
 	w.W.Close()
 

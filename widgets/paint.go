@@ -36,7 +36,7 @@ func init() {
 
 			// gc.SetStrokeColor(color.Black)
 			if b.pressed {
-				gc.SetFillColor(color.RGBA{150, 150, 150, 255})
+				gc.SetFillColor(color.RGBA{50, 50, 50, 255})
 				safeRect(gc, bbounds.Min, bbounds.Max)
 				gc.Fill()
 			} else {
