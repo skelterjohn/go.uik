@@ -45,7 +45,7 @@ type LayoutEngine interface {
 	// to this function. It is suffixed by "Unsafe" to deter
 	// sites other than the Layouter from calling it, since it
 	// would not be safe for them.
-	SetConfigUnsafe(cfg interface{})
+	ConfigUnsafe(cfg interface{})
 }
 
 type Layouter struct {
@@ -100,7 +100,7 @@ func (l *Layouter) HandleEvents() {
 			l.DoResizeEvent(e)
 			l.placeBlocks()
 		case cfg := <-l.config:
-			l.engine.SetConfigUnsafe(cfg)
+			l.engine.ConfigUnsafe(cfg)
 		}
 	}
 }

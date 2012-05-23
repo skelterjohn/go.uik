@@ -72,7 +72,7 @@ func (p *PadLayout) GetLayout(size geom.Coord) (l Layout) {
 	}
 	return
 }
-func (p *PadLayout) SetConfigUnsafe(cfg interface{}) {
+func (p *PadLayout) ConfigUnsafe(cfg interface{}) {
 	switch x := cfg.(type) {
 	case PadConfig:
 		p.config = x

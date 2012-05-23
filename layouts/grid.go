@@ -319,7 +319,7 @@ func (g *GridEngine) GetLayout(size geom.Coord) (layout Layout) {
 	return
 }
 
-func (g *GridEngine) SetConfigUnsafe(cfg interface{}) {
+func (g *GridEngine) ConfigUnsafe(cfg interface{}) {
 	// uik.Report(g.layouter.ID, "cfg", cfg)
 	switch cfg := cfg.(type) {
 	case GridConfig:
