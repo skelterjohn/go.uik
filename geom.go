@@ -55,7 +55,7 @@ func (rs RectSet) Translate(offset geom.Coord) (nrs RectSet) {
 func (rs RectSet) Intersection(r geom.Rect) (nrs RectSet) {
 	for _, x := range rs {
 		if geom.RectsIntersect(x, r) {
-			nrs = append(nrs, x)
+			nrs = append(nrs, geom.RectsIntersection(x, r))
 		}
 	}
 	return

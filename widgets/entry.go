@@ -169,7 +169,10 @@ func (e *Entry) draw(gc draw2d.GraphicContext) {
 		gc.MoveTo(offset, 0)
 		gc.LineTo(offset, e.Size.Y)
 		gc.Stroke()
-		e.Invalidate()
+		e.Invalidate(geom.Rect{
+			Min: geom.Coord{offset - 1, 0},
+			Max: geom.Coord{offset + 1, e.Size.Y},
+		})
 	}
 }
 

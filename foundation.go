@@ -194,16 +194,20 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 		// only redraw those that have been invalidated or are
 		// otherwise unable to draw themselves
 		if child.buffer == nil || invalidRects.Intersects(bounds) {
+
+			subInv := invalidRects.Intersection(bounds).Translate(bounds.Min.Times(-1))
 			or := image.Rectangle{
 				Max: image.Point{int(child.Size.X), int(child.Size.Y)},
 			}
 			if child.buffer == nil || child.buffer.Bounds() != or {
 				child.buffer = image.NewRGBA(or)
 			} else {
-				ZeroRGBA(child.buffer.(*image.RGBA))
+				for _, r := range subInv {
+					ir := RectangleForRect(r)
+					ZeroRGBA(child.buffer.(*image.RGBA).SubImage(ir).(*image.RGBA))
+				}
 			}
 
-			subInv := invalidRects.Intersection(bounds)
 			subInv = subInv.Translate(bounds.Min.Times(-1))
 
 			child.Drawer.Draw(child.buffer, subInv)

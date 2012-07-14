@@ -242,12 +242,15 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				invalidRects = RectSet{wf.Bounds()}
 			}
 			wf.Drawer.Draw(scrBuf, invalidRects)
+			var srs []image.Rectangle
 			for _, ir := range invalidRects {
-				si := scrBuf.SubImage(RectangleForRect(ir))
+				sr := RectangleForRect(ir)
+				si := scrBuf.SubImage(sr)
+				srs = append(srs, sr)
 				draw.Draw(scr, scr.Bounds(), si, image.Point{}, draw.Src)
 			}
 			invalidRects = invalidRects[:0]
-			wf.W.FlushImage()
+			wf.W.FlushImage(srs...)
 			newStuff = false
 		}
 	}

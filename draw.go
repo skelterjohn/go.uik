@@ -32,8 +32,8 @@ func ClearPaint(gc draw2d.GraphicContext) {
 
 func ZeroRGBA(rgba *image.RGBA) {
 	for y := rgba.Rect.Min.Y; y < rgba.Rect.Max.Y; y++ {
-		rowStart := (y-rgba.Rect.Min.Y)*rgba.Stride - rgba.Rect.Min.X*4
-		rowEnd := rowStart + (rgba.Rect.Max.X-rgba.Rect.Min.X)*4
+		rowStart := rgba.PixOffset(rgba.Rect.Min.X, y)
+		rowEnd := rgba.PixOffset(rgba.Rect.Max.X, y)
 		row := rgba.Pix[rowStart:rowEnd]
 		for i := range row {
 			row[i] = 0

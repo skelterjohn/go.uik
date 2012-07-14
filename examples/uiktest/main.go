@@ -152,7 +152,7 @@ func uiktest() {
 		&l.Block,
 		// &kg.Block,
 		&b2.Block,
-		&cb.Block,
+		&e.Block,
 		// &e.Block,
 		&g.Block,
 	)
