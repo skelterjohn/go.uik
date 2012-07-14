@@ -250,6 +250,7 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				draw.Draw(scr, scr.Bounds(), si, image.Point{}, draw.Src)
 			}
 			invalidRects = invalidRects[:0]
+
 			wf.W.FlushImage(srs...)
 			newStuff = false
 		}

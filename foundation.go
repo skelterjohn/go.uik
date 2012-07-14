@@ -208,7 +208,7 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 				}
 			}
 
-			subInv = subInv.Translate(bounds.Min.Times(-1))
+			//subInv = subInv.Translate(bounds.Min.Times(-1))
 
 			child.Drawer.Draw(child.buffer, subInv)
 		}
