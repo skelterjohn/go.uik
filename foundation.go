@@ -194,7 +194,6 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 		// only redraw those that have been invalidated or are
 		// otherwise unable to draw themselves
 		if child.buffer == nil || invalidRects.Intersects(bounds) {
-
 			subInv := invalidRects.Intersection(bounds).Translate(bounds.Min.Times(-1))
 			or := image.Rectangle{
 				Max: image.Point{int(child.Size.X), int(child.Size.Y)},
@@ -207,9 +206,6 @@ func (f *Foundation) Draw(buffer draw.Image, invalidRects RectSet) {
 					ZeroRGBA(child.buffer.(*image.RGBA).SubImage(ir).(*image.RGBA))
 				}
 			}
-
-			//subInv = subInv.Translate(bounds.Min.Times(-1))
-
 			child.Drawer.Draw(child.buffer, subInv)
 		}
 
