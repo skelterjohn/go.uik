@@ -92,7 +92,7 @@ You can build it (go run doesn't work, because go run doesn't care about the thr
 
 	$ go build /path/to/your/helloworld
 
-After running this, you'll get a `hello` file in you current directory (to start it `./hello`). But there's a problem, we can close the window, this will be solved next. For now just press `Ctrl + c` on the console where you started the `hello` program.
+After running this, you'll get a `hello` file in you current directory (to start it `./hello`). But there's a problem, we can't close the window, this will be solved next. For now just press `Ctrl + c` on the console where you started the `hello` program.
 
 ### The Close Event
 The program works, but we don't end it properly. We have to add a close event to the window to end the program when the window is being closed.
