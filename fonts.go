@@ -31,8 +31,9 @@ var DefaultFontData = draw2d.FontData{
 
 func GetFontHeight(fd draw2d.FontData, size float64) (height float64) {
 	font := draw2d.GetFont(fd)
-	bounds := font.Bounds()
-	height = float64(bounds.YMax-bounds.YMin) * size / float64(font.UnitsPerEm())
+	fupe := font.FUnitsPerEm()
+	bounds := font.Bounds(fupe)
+	height = float64(bounds.YMax-bounds.YMin) * size / float64(fupe)
 	return
 }
 
