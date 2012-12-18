@@ -7,6 +7,7 @@ import (
 	"github.com/skelterjohn/go.uik/layouts"
 	"github.com/skelterjohn/go.uik/widgets"
 	"github.com/skelterjohn/go.wde"
+	_ "github.com/skelterjohn/go.wde/init"
 	"image/color"
 	"strings"
 )
