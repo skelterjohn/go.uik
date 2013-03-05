@@ -8,7 +8,6 @@ import (
 	"github.com/skelterjohn/go.uik/widgets"
 	"github.com/skelterjohn/go.wde"
 	"image/color"
-	"strings"
 )
 
 func main() {
@@ -25,7 +24,7 @@ func uikplay() {
 	}
 	w.W.SetTitle("go.uik")
 
-	gcfg, err := layouts.ReadGridConfig(strings.NewReader(`
+	gcfg, err := layouts.ParseGridConfig(`
 {
 	"Components": {
 		"radio": {
@@ -42,7 +41,7 @@ func uikplay() {
 		}
 	}
 }
-		`))
+		`)
 	if err != nil {
 		fmt.Println(err)
 		return

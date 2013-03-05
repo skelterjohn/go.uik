@@ -67,7 +67,46 @@ func uiktest() {
 
 	kg := widgets.NewKeyGrab(geom.Coord{50, 50})
 
-	ge := layouts.NewGridEngine(layouts.GridConfig{})
+	gconfig := layouts.GridConfig{
+		Components: map[string]layouts.GridComponent{
+			"ul": layouts.GridComponent{
+				GridX: 0,
+				GridY: 0,
+			},
+			"ur": layouts.GridComponent{
+				GridX: 1, GridY: 0,
+				MinSize:      geom.Coord{60, 60},
+				AnchorRight:  true,
+				AnchorBottom: true,
+			},
+			"ll": layouts.GridComponent{
+				GridX: 0, GridY: 1,
+			},
+			"lr": layouts.GridComponent{
+				GridX: 1, GridY: 1,
+				AnchorRight: true,
+				AnchorTop:   true,
+			},
+			"firstbutton": layouts.GridComponent{
+				GridX: 0, GridY: 2,
+				ExtraX:       1,
+				AnchorLeft:   true,
+				AnchorRight:  true,
+				AnchorTop:    true,
+				AnchorBottom: true,
+			},
+			"secondbutton": layouts.GridComponent{
+				GridX: 1, GridY: 3,
+				ExtraX:       1,
+				AnchorLeft:   true,
+				AnchorRight:  true,
+				AnchorTop:    true,
+				AnchorBottom: true,
+			},
+		},
+	}
+
+	ge := layouts.NewGridEngine(gconfig)
 	g := layouts.NewLayouter(ge)
 
 	l0_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"0, 0", 12, color.Black})
@@ -75,39 +114,12 @@ func uiktest() {
 	l1_0 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"1, 0", 12, color.Black})
 	l1_1 := widgets.NewLabel(geom.Coord{}, widgets.LabelConfig{"1, 1", 12, color.Black})
 
-	ge.Add(&l0_0.Block, layouts.GridComponent{
-		GridX: 0, GridY: 0,
-	})
-	ge.Add(&l0_1.Block, layouts.GridComponent{
-		GridX: 0, GridY: 1,
-	})
-	ge.Add(&l1_0.Block, layouts.GridComponent{
-		GridX: 1, GridY: 0,
-		MinSize:      geom.Coord{60, 60},
-		AnchorRight:  true,
-		AnchorBottom: true,
-	})
-	ge.Add(&l1_1.Block, layouts.GridComponent{
-		GridX: 1, GridY: 1,
-		AnchorRight: true,
-		AnchorTop:   true,
-	})
-	ge.Add(&widgets.NewButton("Spanner").Block, layouts.GridComponent{
-		GridX: 0, GridY: 2,
-		ExtraX:       1,
-		AnchorLeft:   true,
-		AnchorRight:  true,
-		AnchorTop:    true,
-		AnchorBottom: true,
-	})
-	ge.Add(&widgets.NewButton("Offset Spanner").Block, layouts.GridComponent{
-		GridX: 1, GridY: 3,
-		ExtraX:       1,
-		AnchorLeft:   true,
-		AnchorRight:  true,
-		AnchorTop:    true,
-		AnchorBottom: true,
-	})
+	ge.AddName("ul", &l0_0.Block)
+	ge.AddName("ll", &l0_1.Block)
+	ge.AddName("ur", &l1_0.Block)
+	ge.AddName("lr", &l1_1.Block)
+	ge.AddName("firstbutton", &widgets.NewButton("Spanner").Block)
+	ge.AddName("secondbutton", &widgets.NewButton("Offset Spanner").Block)
 
 	if true {
 		imgReader := bytes.NewReader(gordon_gif())

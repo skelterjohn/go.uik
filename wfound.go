@@ -241,7 +241,9 @@ func (wf *WindowFoundation) handleWindowDrawing() {
 				scrBuf = image.NewRGBA(scr.Bounds())
 				invalidRects = RectSet{wf.Bounds()}
 			}
+			// Report("window drawing starting")
 			wf.Drawer.Draw(scrBuf, invalidRects)
+			// Report("window drawing done")
 			var srs []image.Rectangle
 			for _, ir := range invalidRects {
 				sr := RectangleForRect(ir)

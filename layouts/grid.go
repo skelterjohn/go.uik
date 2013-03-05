@@ -23,6 +23,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"strings"
 )
 
 func VBox(config GridConfig, blocks ...*uik.Block) (l *Layouter) {
@@ -88,6 +89,12 @@ type GridConfig struct {
 func ReadGridConfig(r io.Reader) (cfg GridConfig, err error) {
 	dec := json.NewDecoder(r)
 	err = dec.Decode(&cfg)
+	return
+}
+
+func ParseGridConfig(fmt string) (cfg GridConfig, err error) {
+	r := strings.NewReader(fmt)
+	cfg, err = ReadGridConfig(r)
 	return
 }
 

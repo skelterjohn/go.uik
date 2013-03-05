@@ -76,8 +76,7 @@ func (f *flex) rem(e *elem) {
 }
 
 func (f *flex) constrain(length float64) (widths, mins, maxs []float64) {
-
-	// r("checking length", length, f.oldLength)
+	// r("checking length", length, f.length)
 	// first check if the last settings are still ok - better to not change if possible
 
 	if length == f.length {

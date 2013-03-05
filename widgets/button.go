@@ -134,6 +134,7 @@ func (b *Button) handleEvents() {
 				b.Invalidate()
 			case uik.MouseUpEvent:
 				b.pressed = false
+				// uik.Report(b.ID, "was clicked")
 				for c := range b.Clickers {
 					select {
 					case c <- e.Which:
