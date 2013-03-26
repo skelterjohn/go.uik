@@ -209,6 +209,9 @@ func (e *Entry) handleEvents() {
 				if e.selecting {
 					e.Invalidate()
 				}
+				if e.cursor == e.selectCursor {
+					e.selecting = false
+				}
 			case uik.MouseDraggedEvent:
 				if !e.selecting {
 					break
@@ -219,69 +222,68 @@ func (e *Entry) handleEvents() {
 					e.Invalidate()
 				}
 			case uik.KeyTypedEvent:
-
 				// uik.Report("key", ev.Code, ev.Letter)
-				if ev.Glyph != "" {
-					start, end := e.cursor, e.cursor
+				switch ev.Key {
+				case wde.KeyBackspace:
+					if len(e.text) == 0 {
+						break
+					}
+					if !e.selecting && e.cursor == 0 {
+						break
+					}
+					start, end := e.cursor-1, e.cursor
 					if e.selecting {
+						start = e.cursor
 						end = e.selectCursor
 						if end < start {
 							start, end = end, start
 						}
 					}
-					head := e.text[:start]
-					tail := e.text[end:]
-					e.text = make([]rune, len(head)+len(tail)+1)[:0]
-					e.text = append(e.text, head...)
-					e.text = append(e.text, []rune(ev.Glyph)[0])
-					e.text = append(e.text, tail...)
-					e.cursor = start + 1
-				} else {
-					switch ev.Key {
-					case wde.KeyBackspace:
-						if len(e.text) == 0 {
-							break
+					copy(e.text[start:], e.text[end:])
+					e.text = e.text[:len(e.text)-(end-start)]
+					e.cursor = start
+				case wde.KeyDelete:
+					if len(e.text) == 0 {
+						break
+					}
+					if !e.selecting && e.cursor == len(e.text) {
+						break
+					}
+					start, end := e.cursor, e.cursor+1
+					if e.selecting {
+						start = e.cursor
+						end = e.selectCursor
+						if end < start {
+							start, end = end, start
 						}
-						if !e.selecting && e.cursor == 0 {
-							break
-						}
-						start, end := e.cursor-1, e.cursor
+					}
+					copy(e.text[start:], e.text[end:])
+					e.text = e.text[:len(e.text)-(end-start)]
+					e.cursor = start
+				case wde.KeyLeftArrow:
+					if e.cursor > 0 {
+						e.cursor--
+					}
+				case wde.KeyRightArrow:
+					if e.cursor < len(e.text) {
+						e.cursor++
+					}
+				default:
+					if ev.Glyph != "" {
+						start, end := e.cursor, e.cursor
 						if e.selecting {
-							start = e.cursor
 							end = e.selectCursor
 							if end < start {
 								start, end = end, start
 							}
 						}
-						copy(e.text[start:], e.text[end:])
-						e.text = e.text[:len(e.text)-(end-start)]
-						e.cursor = start
-					case wde.KeyDelete:
-						if len(e.text) == 0 {
-							break
-						}
-						if !e.selecting && e.cursor == len(e.text) {
-							break
-						}
-						start, end := e.cursor, e.cursor+1
-						if e.selecting {
-							start = e.cursor
-							end = e.selectCursor
-							if end < start {
-								start, end = end, start
-							}
-						}
-						copy(e.text[start:], e.text[end:])
-						e.text = e.text[:len(e.text)-(end-start)]
-						e.cursor = start
-					case wde.KeyLeftArrow:
-						if e.cursor > 0 {
-							e.cursor--
-						}
-					case wde.KeyRightArrow:
-						if e.cursor < len(e.text) {
-							e.cursor++
-						}
+						head := e.text[:start]
+						tail := e.text[end:]
+						e.text = make([]rune, len(head)+len(tail)+1)[:0]
+						e.text = append(e.text, head...)
+						e.text = append(e.text, []rune(ev.Glyph)[0])
+						e.text = append(e.text, tail...)
+						e.cursor = start + 1
 					}
 				}
 				e.selecting = false
