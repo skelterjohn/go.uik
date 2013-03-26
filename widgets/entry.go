@@ -209,6 +209,9 @@ func (e *Entry) handleEvents() {
 				if e.selecting {
 					e.Invalidate()
 				}
+				if e.cursor == e.selectCursor {
+					e.selecting = false
+				}
 			case uik.MouseDraggedEvent:
 				if !e.selecting {
 					break
