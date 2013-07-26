@@ -1,3 +1,5 @@
+This project is closed. If I begin again, it will be from scratch and using lessons learned while writing go.uik. Of course, if I begin again it will still be called go.uik.
+
 #go.uik
 
 A concurrent UI kit written in pure go.
